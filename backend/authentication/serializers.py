@@ -38,26 +38,31 @@ class SignupSerializer(serializers.ModelSerializer):
         )
         return user
 
+from rest_framework import serializers
+from django.contrib.auth import authenticate
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
-    
+
     def validate(self, attrs):
-        username = attrs.get('username')
-        password = attrs.get('password')
-        
-        if username and password:
+        try:
+            username = attrs['username']
+            password = attrs['password']
+
             user = authenticate(username=username, password=password)
-            if user:
-                if user.is_active:
-                    attrs['user'] = user
-                    return attrs
-                else:
-                    raise serializers.ValidationError('User account is disabled.')
-            else:
-                raise serializers.ValidationError('Invalid username or password.')
-        else:
-            raise serializers.ValidationError('Must include username and password.')
+            if not user:
+                raise ValueError("Invalid username or password.")
+            if not user.is_active:
+                raise ValueError("User account is disabled.")
+
+            attrs['user'] = user
+            return attrs
+
+        except KeyError:
+            raise serializers.ValidationError("Must include username and password.")
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
