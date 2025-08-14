@@ -32,9 +32,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework.authtoken',  # Add this for token authentication
+    'rest_framework.authtoken', 
     'corsheaders',
-    'authentication',  # Add this new app
+    'authentication',  
 ]
 
 MIDDLEWARE = [
@@ -86,7 +86,8 @@ DATABASES = {
 # REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'authentication.cookies_custom_authenticate.CookieTokenAuthentication',  
+        'rest_framework.authentication.TokenAuthentication',        
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -94,13 +95,19 @@ REST_FRAMEWORK = {
     ],
 }
 
+AUTH_COOKIE_NAME = 'auth_token'
+AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7  
+AUTH_COOKIE_SECURE = False  
+AUTH_COOKIE_HTTP_ONLY = True  
+AUTH_COOKIE_SAMESITE = 'Lax'  
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
-CORS_ALLOW_CREDENTIALS = True  # Important for cookies
-CORS_ALLOW_ALL_ORIGINS = False  # Keep it secure
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False 
 
 
 # Password validation

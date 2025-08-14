@@ -29,6 +29,7 @@ class SignupSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
+    
         validated_data.pop('password_confirm')
         
         user = User.objects.create_user(
@@ -38,32 +39,45 @@ class SignupSerializer(serializers.ModelSerializer):
         )
         return user
 
-from rest_framework import serializers
-from django.contrib.auth import authenticate
-
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    login = serializers.CharField(help_text="Username or Email")
     password = serializers.CharField(write_only=True)
-
+    
     def validate(self, attrs):
+        login = attrs.get('login')
+        password = attrs.get('password')
+        
+        if not login or not password:
+            raise serializers.ValidationError('Must include email/username and password.')
+        
+        user = None
+        if '@' in login:
+            try:
+                user_obj = User.objects.get(email=login)
+                user = authenticate(username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                pass
+            except Exception as e:
+                raise serializers.ValidationError('Authentication error occurred.')
+        
+        if not user:
+            try:
+                user = authenticate(username=login, password=password)
+            except Exception as e:
+                raise serializers.ValidationError('Authentication error occurred.')
+        
+        if not user:
+            raise serializers.ValidationError('Invalid email/username or password.')
+        
         try:
-            username = attrs['username']
-            password = attrs['password']
-
-            user = authenticate(username=username, password=password)
-            if not user:
-                raise ValueError("Invalid username or password.")
             if not user.is_active:
-                raise ValueError("User account is disabled.")
-
-            attrs['user'] = user
-            return attrs
-
-        except KeyError:
-            raise serializers.ValidationError("Must include username and password.")
-        except ValueError as e:
-            raise serializers.ValidationError(str(e))
-
+                raise serializers.ValidationError('User account is disabled.')
+        except AttributeError:
+            raise serializers.ValidationError('Invalid user account.')
+        
+        attrs['user'] = user
+        return attrs
+    
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
