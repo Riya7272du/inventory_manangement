@@ -103,16 +103,14 @@ def logout(request):
             'success': True,
             'message': 'Logged out successfully'
         }, status=status.HTTP_200_OK)
-        
-        clear_auth_cookie(response)
-        return response
     except:
         response = Response({
             'success': False,
             'message': 'Error logging out'
         }, status=status.HTTP_400_BAD_REQUEST)
-        clear_auth_cookie(response)
-        return response
+    
+    clear_auth_cookie(response)
+    return response
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
