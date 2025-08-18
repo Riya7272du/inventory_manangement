@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import type { SignupFormData, FormErrors } from '../types/auth';
 import { validateName, validateEmail, validatePassword, validateRole } from '../utils/validation';
+import { signupStyles } from '../styles/signup_styles';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Button } from './ui/Button';
+
 
 const roleOptions = [
     { value: 'manager', label: 'Manager' },
@@ -17,11 +19,8 @@ const SignupForm: React.FC = () => {
         password: '',
         role: 'manager',
     });
-
     const [errors, setErrors] = useState<FormErrors>({});
-
     const [isLoading, setIsLoading] = useState(false);
-
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, name: e.target.value }));
         if (errors.name) {
@@ -50,8 +49,10 @@ const SignupForm: React.FC = () => {
         }
     };
 
+
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
+
 
         const nameError = validateName(formData.name);
         if (nameError) newErrors.name = nameError;
@@ -66,8 +67,10 @@ const SignupForm: React.FC = () => {
         if (roleError) newErrors.role = roleError;
 
         setErrors(newErrors);
+
         return Object.keys(newErrors).length === 0;
     };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,6 +82,7 @@ const SignupForm: React.FC = () => {
         setIsLoading(true);
 
         try {
+
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             console.log('Form submitted:', formData);
@@ -105,44 +109,29 @@ const SignupForm: React.FC = () => {
         alert('Redirecting to login page...');
     };
 
-    const containerStyle = {
-        background: 'radial-gradient(1200px 800px at 20% -10%, #1b2140 0%, #0e1220 55%, #0b0e1a 100%)',
-        color: '#e6e9f2',
-        fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"'
-    };
-
-    const cardStyle = {
-        background: '#161a2f',
-        borderColor: '#2a3156',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.35)'
-    };
-
-    const logoStyle = {
-        background: 'linear-gradient(135deg, #6e8bff, #22c55e)',
-        boxShadow: '0 6px 20px rgba(110,139,255,0.35)'
-    };
-
     return (
         <div
             className="min-h-screen flex items-center justify-center p-6"
-            style={containerStyle}
+            style={signupStyles.container}
         >
             <div className="w-full max-w-md">
                 <div
                     className="p-5 rounded-xl border shadow-2xl"
-                    style={cardStyle}
+                    style={signupStyles.card}
                 >
+
                     <div className="flex items-center gap-3 mb-4">
                         <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center"
-                            style={logoStyle}
+                            style={signupStyles.logo}
                         >
+
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white m-0">
                                 Create account
                             </h2>
-                            <p className="text-sm m-0 mt-0.5" style={{ color: '#acb2c7' }}>
+                            <p className="text-sm m-0 mt-0.5" style={signupStyles.subtitle}>
                                 Join Inventory Management
                             </p>
                         </div>
@@ -208,7 +197,7 @@ const SignupForm: React.FC = () => {
                     </form>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 
