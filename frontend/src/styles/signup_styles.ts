@@ -1,7 +1,6 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties } from 'react';
 
-export const signupStyles = {
-
+export const authStyles = {
     container: {
         background: 'radial-gradient(1200px 800px at 20% -10%, #1b2140 0%, #0e1220 55%, #0b0e1a 100%)',
         color: '#e6e9f2',
@@ -21,5 +20,16 @@ export const signupStyles = {
 
     subtitle: {
         color: '#acb2c7'
+    } as CSSProperties,
+
+    link: {
+        color: '#6e8bff',
+        textDecoration: 'none',
+        cursor: 'pointer'
+    } as CSSProperties,
+
+    smallText: {
+        color: '#acb2c7',
+        fontSize: '14px'
     } as CSSProperties
 };
