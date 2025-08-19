@@ -1,19 +1,13 @@
-# Add these to your existing settings.py file
-# REMOVED all frontend-related configurations
-
 import os
 from decouple import config
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -58,7 +52,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'my_project.wsgi.application'
 
-# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -70,7 +63,6 @@ DATABASES = {
     }
 }
 
-# REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'authentication.cookies_custom_authenticate.CookieTokenAuthentication',
@@ -82,21 +74,57 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 AUTH_COOKIE_NAME = 'auth_token'
-AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7  
-AUTH_COOKIE_SECURE = False 
-AUTH_COOKIE_HTTP_ONLY = True
-AUTH_COOKIE_SAMESITE = 'Lax'
+AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7 
+AUTH_COOKIE_SECURE = False  
+AUTH_COOKIE_HTTP_ONLY = True  
+AUTH_COOKIE_SAMESITE = 'Lax' 
 
-# CORS settings (can be more restrictive since no frontend)
+CORS_ALLOW_CREDENTIALS = True  
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",  # Django dev server
-    "http://127.0.0.1:8000",
+    "http://localhost:3000",  
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",  
+    "http://127.0.0.1:4173",
 ]
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
 
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+]
+
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  
+CSRF_COOKIE_SECURE = False  
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -107,7 +135,6 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@yourapp.com')
 PASSWORD_RESET_TIMEOUT = 3600  
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -123,14 +150,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
 STATIC_URL = 'static/'
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

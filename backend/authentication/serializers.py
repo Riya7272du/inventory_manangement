@@ -9,89 +9,99 @@ from django.conf import settings
 
 
 class SignupSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=150, write_only=True)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, min_length=8)
-    password_confirm = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=['manager', 'admin'], default='manager')
     
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm')
-        extra_kwargs = {
-            'email': {'required': True},
-        }
+        fields = ('name', 'email', 'password', 'role')
     
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
     
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with this username already exists.")
-        return value
-    
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError("Passwords do not match.")
-        return attrs
+    def validate_name(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Name must be at least 2 characters long.")
+        return value.strip()
     
     def create(self, validated_data):
-    
-        validated_data.pop('password_confirm')
-        
+        name = validated_data.pop('name')
+        role = validated_data.pop('role')
+        email = validated_data['email']
+        username = email.split('@')[0]
+
+        counter = 1
+        original_username = username
+        while User.objects.filter(username=username).exists():
+            username = f"{original_username}{counter}"
+            counter += 1
         user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password']
+            username=username,
+            email=email,
+            password=validated_data['password'],
+            first_name=name,
         )
+
+        if role == 'admin':
+            user.is_staff = True
+            user.is_superuser = True
+        else:  # manager
+            user.is_staff = True
+            user.is_superuser = False
+        
+        user.save()
         return user
 
+
 class LoginSerializer(serializers.Serializer):
-    login = serializers.CharField(help_text="Username or Email")
+    email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     
     def validate(self, attrs):
-        login = attrs.get('login')
+        email = attrs.get('email')
         password = attrs.get('password')
         
-        if not login or not password:
-            raise serializers.ValidationError('Must include email/username and password.')
-        
-        user = None
-        if '@' in login:
-            try:
-                user_obj = User.objects.get(email=login)
-                user = authenticate(username=user_obj.username, password=password)
-            except User.DoesNotExist:
-                pass
-            except Exception as e:
-                raise serializers.ValidationError('Authentication error occurred.')
-        
-        if not user:
-            try:
-                user = authenticate(username=login, password=password)
-            except Exception as e:
-                raise serializers.ValidationError('Authentication error occurred.')
-        
-        if not user:
-            raise serializers.ValidationError('Invalid email/username or password.')
+        if not email or not password:
+            raise serializers.ValidationError('Email and password are required.')
         
         try:
-            if not user.is_active:
-                raise serializers.ValidationError('User account is disabled.')
-        except AttributeError:
-            raise serializers.ValidationError('Invalid user account.')
+            user_obj = User.objects.get(email=email)
+            user = authenticate(username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Invalid email or password.')
+        
+        if not user:
+            raise serializers.ValidationError('Invalid email or password.')
+        
+        if not user.is_active:
+            raise serializers.ValidationError('User account is disabled.')
         
         attrs['user'] = user
         return attrs
-    
+
+
 class UserSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='first_name', read_only=True)
+    role = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'date_joined', 'is_active')
-        read_only_fields = ('id', 'date_joined')
+        fields = ('id', 'username', 'name', 'email', 'role', 'date_joined', 'is_active')
+        read_only_fields = ('id', 'username', 'date_joined')
+    
+    def get_role(self, obj):
+        if obj.is_superuser:
+            return 'admin'
+        elif obj.is_staff:
+            return 'manager'
+        return 'user'
+
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-
     email = serializers.EmailField()
     
     def validate_email(self, value):
@@ -104,15 +114,18 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             user = User.objects.get(email=email, is_active=True)
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
+            
             subject = 'Password Reset Request'
             message = f"""
-Hello {user.username},
+Hello {user.first_name or user.username},
 
 Your password reset details:
 - User ID (UID): {uid}
 - Reset Token: {token}
 
+Use these details to reset your password.
             """
+            
             send_mail(
                 subject=subject,
                 message=message,
@@ -127,7 +140,7 @@ Your password reset details:
                 'token': token,
                 'user_id': user.id,
                 'username': user.username,
-                'message': 'Password Reset email sent successfully',
+                'message': 'Password reset email sent successfully',
                 'user_exists': True
             }
             
@@ -138,15 +151,14 @@ Your password reset details:
                 'user_exists': False
             }
 
+
 class PasswordResetConfirmSerializer(serializers.Serializer):
-    
     uid = serializers.CharField()
     token = serializers.CharField()
     new_password = serializers.CharField(min_length=8, write_only=True)
     new_password_confirm = serializers.CharField(write_only=True)
     
     def validate(self, attrs):
-        
         uid = attrs.get('uid')
         token = attrs.get('token')
         new_password = attrs.get('new_password')
@@ -155,16 +167,15 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if new_password != new_password_confirm:
             raise serializers.ValidationError("Passwords do not match.")
         
-     
         try:
             user_id = force_str(urlsafe_base64_decode(uid))
             user = User.objects.get(pk=user_id, is_active=True)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             raise serializers.ValidationError("Invalid UID. Please check your reset details.")
         
-      
         if not default_token_generator.check_token(user, token):
             raise serializers.ValidationError("Invalid or expired reset token.")
+            
         attrs['user'] = user
         return attrs
     
@@ -173,6 +184,4 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         new_password = self.validated_data['new_password']
         user.set_password(new_password)
         user.save()
-        
         return user
-
