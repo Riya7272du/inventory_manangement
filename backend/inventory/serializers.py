@@ -6,7 +6,7 @@ from decimal import Decimal
 class InventoryItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InventoryItem
-        fields = ['id', 'sku', 'item_name', 'category', 'quantity', 'price', 'supplier', 'created_at', 'updated_at']
+        fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_sku(self, value):
