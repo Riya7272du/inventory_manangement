@@ -8,20 +8,23 @@ from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .serializers import (
     SignupSerializer, LoginSerializer, UserSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 )
 
 def set_auth_cookie(response, token):
-    response.set_cookie(
-        key=getattr(settings, 'AUTH_COOKIE_NAME', 'auth_token'),
-        value=token,
-        max_age=getattr(settings, 'AUTH_COOKIE_MAX_AGE', 60 * 60 * 24 * 7),  # 7 days
-        secure=getattr(settings, 'AUTH_COOKIE_SECURE', False),
-        httponly=getattr(settings, 'AUTH_COOKIE_HTTP_ONLY', True),
-        samesite=getattr(settings, 'AUTH_COOKIE_SAMESITE', 'Lax')
-    )
+    cookie_settings = {
+        'key': getattr(settings, 'AUTH_COOKIE_NAME', 'auth_token'),
+        'value': token,
+        'max_age': getattr(settings, 'AUTH_COOKIE_MAX_AGE', 60 * 60 * 24 * 7),
+        'secure': getattr(settings, 'AUTH_COOKIE_SECURE', False),
+        'httponly': getattr(settings, 'AUTH_COOKIE_HTTP_ONLY', True),
+        'samesite': getattr(settings, 'AUTH_COOKIE_SAMESITE', 'Lax')
+    }
+    response.set_cookie(**cookie_settings)
 
 def clear_auth_cookie(response):
     response.delete_cookie(
@@ -29,6 +32,7 @@ def clear_auth_cookie(response):
         samesite=getattr(settings, 'AUTH_COOKIE_SAMESITE', 'Lax')
     )
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
@@ -45,7 +49,6 @@ def signup(request):
             'token': token.key 
         }, status=status.HTTP_201_CREATED)
         set_auth_cookie(response, token.key)
-        
         return response
     
     return Response({
@@ -54,10 +57,10 @@ def signup(request):
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-
     serializer = LoginSerializer(data=request.data)
     
     if serializer.is_valid():
@@ -73,9 +76,8 @@ def login(request):
         }, status=status.HTTP_200_OK)
     
         set_auth_cookie(response, token.key)
-        
         return response
-    
+
     return Response({
         'success': False,
         'message': 'Login failed. Please check your credentials.', 
@@ -93,7 +95,7 @@ def profile(request):
         'authenticated_via': 'cookie' if request.COOKIES.get('auth_token') else 'header'
     }, status=status.HTTP_200_OK)
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -112,6 +114,7 @@ def logout(request):
     clear_auth_cookie(response)
     return response
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_request(request):
@@ -160,6 +163,7 @@ def password_reset_request(request):
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_confirm(request):
@@ -195,6 +199,7 @@ def password_reset_confirm(request):
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def validate_reset_token(request):

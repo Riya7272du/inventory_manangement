@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { SignupFormData, LoginFormData, FormErrors, AuthMode } from '../types/auth';
 import { validateName, validateEmail, validatePassword, validateRole } from '../utils/validation';
 import { authStyles } from '../styles/signup_styles';
+import { authAPI } from '../services/api';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Button } from './ui/Button';
@@ -12,7 +13,6 @@ const roleOptions = [
 ];
 
 const AuthForm: React.FC = () => {
-
     const [authMode, setAuthMode] = useState<AuthMode>('signup');
     const [signupData, setSignupData] = useState<SignupFormData>({
         name: '',
@@ -27,36 +27,35 @@ const AuthForm: React.FC = () => {
     });
 
     const [errors, setErrors] = useState<FormErrors>({});
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const [isLoading, setIsLoading] = useState(false);
-
-    const toggleAuthMode = () => {
+    const toggleAuthMode = (): void => {
         setAuthMode(prev => prev === 'login' ? 'signup' : 'login');
         setErrors({});
     };
 
-    const handleSignupNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSignupNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setSignupData(prev => ({ ...prev, name: e.target.value }));
         if (errors.name) {
             setErrors(prev => ({ ...prev, name: undefined }));
         }
     };
 
-    const handleSignupEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSignupEmailChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setSignupData(prev => ({ ...prev, email: e.target.value }));
         if (errors.email) {
             setErrors(prev => ({ ...prev, email: undefined }));
         }
     };
 
-    const handleSignupPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSignupPasswordChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setSignupData(prev => ({ ...prev, password: e.target.value }));
         if (errors.password) {
             setErrors(prev => ({ ...prev, password: undefined }));
         }
     };
 
-    const handleSignupRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleSignupRoleChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
         setSignupData(prev => ({
             ...prev,
             role: e.target.value as 'manager' | 'admin'
@@ -66,14 +65,14 @@ const AuthForm: React.FC = () => {
         }
     };
 
-    const handleLoginEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLoginEmailChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setLoginData(prev => ({ ...prev, email: e.target.value }));
         if (errors.email) {
             setErrors(prev => ({ ...prev, email: undefined }));
         }
     };
 
-    const handleLoginPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLoginPasswordChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setLoginData(prev => ({ ...prev, password: e.target.value }));
         if (errors.password) {
             setErrors(prev => ({ ...prev, password: undefined }));
@@ -112,7 +111,86 @@ const AuthForm: React.FC = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSignup = async (): Promise<void> => {
+        try {
+            const response = await authAPI.signup(signupData);
+
+            if (response.data.success) {
+                alert('Account created successfully! Welcome to the platform.');
+                console.log('User created:', response.data.user);
+
+                setSignupData({
+                    name: '',
+                    email: '',
+                    password: '',
+                    role: 'manager',
+                });
+                setErrors({});
+                setAuthMode('login');
+            }
+        } catch (error: any) {
+            console.error('Signup error:', error);
+
+            if (error.response?.data?.errors) {
+                const backendErrors = error.response.data.errors;
+                const formattedErrors: FormErrors = {};
+
+                if (backendErrors.name?.[0]) {
+                    formattedErrors.name = backendErrors.name[0];
+                }
+                if (backendErrors.email?.[0]) {
+                    formattedErrors.email = backendErrors.email[0];
+                }
+                if (backendErrors.password?.[0]) {
+                    formattedErrors.password = backendErrors.password[0];
+                }
+                if (backendErrors.role?.[0]) {
+                    formattedErrors.role = backendErrors.role[0];
+                }
+
+                setErrors(formattedErrors);
+            } else {
+                alert('Something went wrong during signup. Please try again.');
+            }
+        }
+    };
+
+    const handleLogin = async (): Promise<void> => {
+        try {
+            const response = await authAPI.login(loginData);
+
+            if (response.data.success) {
+                alert('Login successful! Welcome back.');
+                console.log('User logged in:', response.data.user);
+
+                setLoginData({
+                    email: '',
+                    password: '',
+                });
+                setErrors({});
+            }
+        } catch (error: any) {
+            console.error('Login error:', error);
+
+            if (error.response?.data?.errors) {
+                const backendErrors = error.response.data.errors;
+                const formattedErrors: FormErrors = {};
+
+                if (backendErrors.email?.[0]) {
+                    formattedErrors.email = backendErrors.email[0];
+                }
+                if (backendErrors.password?.[0]) {
+                    formattedErrors.password = backendErrors.password[0];
+                }
+
+                setErrors(formattedErrors);
+            } else {
+                alert('Login failed. Please check your credentials.');
+            }
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
 
         const isValid = authMode === 'signup' ? validateSignupForm() : validateLoginForm();
@@ -124,40 +202,21 @@ const AuthForm: React.FC = () => {
         setIsLoading(true);
 
         try {
-
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
             if (authMode === 'signup') {
-                console.log('Signup data:', signupData);
-                alert('Account created successfully!');
-                setSignupData({
-                    name: '',
-                    email: '',
-                    password: '',
-                    role: 'manager',
-                });
+                await handleSignup();
             } else {
-                console.log('Login data:', loginData);
-                alert('Login successful! Redirecting to dashboard...');
-                setLoginData({
-                    email: '',
-                    password: '',
-                });
+                await handleLogin();
             }
-
-            setErrors({});
-
-        } catch (error) {
-            console.error(`Error during ${authMode}:`, error);
-            alert(`Something went wrong during ${authMode}. Please try again.`);
         } finally {
             setIsLoading(false);
         }
     };
-    const handleForgotPassword = () => {
+
+    const handleForgotPassword = (): void => {
         console.log('Forgot password clicked');
         alert('Forgot password functionality would go here');
     };
+
     const currentEmail = authMode === 'signup' ? signupData.email : loginData.email;
     const currentPassword = authMode === 'signup' ? signupData.password : loginData.password;
 
@@ -188,7 +247,6 @@ const AuthForm: React.FC = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-
                         {authMode === 'signup' && (
                             <Input
                                 label="Full Name"
@@ -250,7 +308,7 @@ const AuthForm: React.FC = () => {
                                 disabled={isLoading}
                             >
                                 {isLoading
-                                    ? (authMode === 'signup' ? 'Creating...' : 'Signing in...')
+                                    ? (authMode === 'signup' ? 'Creating account...' : 'Signing in...')
                                     : (authMode === 'signup' ? 'Create account' : 'Login')
                                 }
                             </Button>
