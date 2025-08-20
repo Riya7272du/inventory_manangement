@@ -2,9 +2,6 @@ import axios from 'axios';
 import type { SignupFormData, LoginFormData } from '../types/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-console.log('API URL:', import.meta.env.VITE_API_BASE_URL);
-
-
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
@@ -26,6 +23,14 @@ export const authAPI = {
     login: async (credentials: LoginFormData) => {
         try {
             const response = await api.post('/auth/login/', credentials);
+            return response;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+    logout: async () => {
+        try {
+            const response = await api.post('/auth/logout/');
             return response;
         } catch (error: any) {
             throw error;

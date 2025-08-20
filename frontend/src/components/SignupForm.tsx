@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { SignupFormData, LoginFormData, FormErrors, AuthMode } from '../types/auth';
 import { validateName, validateEmail, validatePassword, validateRole } from '../utils/validation';
 import { authStyles } from '../styles/signup_styles';
@@ -12,8 +13,17 @@ const roleOptions = [
     { value: 'admin', label: 'Admin' },
 ];
 
-const AuthForm: React.FC = () => {
-    const [authMode, setAuthMode] = useState<AuthMode>('signup');
+interface AuthFormProps {
+    onAuthSuccess?: (user: any) => void;
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const getCurrentAuthMode = (): AuthMode => {
+        return location.pathname === '/login' ? 'login' : 'signup';
+    };
+    const [authMode, setAuthMode] = useState<AuthMode>(getCurrentAuthMode());
     const [signupData, setSignupData] = useState<SignupFormData>({
         name: '',
         email: '',
@@ -29,9 +39,14 @@ const AuthForm: React.FC = () => {
     const [errors, setErrors] = useState<FormErrors>({});
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const toggleAuthMode = (): void => {
-        setAuthMode(prev => prev === 'login' ? 'signup' : 'login');
+    useEffect(() => {
+        setAuthMode(getCurrentAuthMode());
         setErrors({});
+    }, [location.pathname]);
+
+    const toggleAuthMode = (): void => {
+        const newPath = authMode === 'login' ? '/signup' : '/login';
+        navigate(newPath);
     };
 
     const handleSignupNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -116,8 +131,11 @@ const AuthForm: React.FC = () => {
             const response = await authAPI.signup(signupData);
 
             if (response.data.success) {
-                alert('Account created successfully! Welcome to the platform.');
-                console.log('User created:', response.data.user);
+                const user = response.data.user;
+
+                if (onAuthSuccess) {
+                    onAuthSuccess(user);
+                }
 
                 setSignupData({
                     name: '',
@@ -126,7 +144,6 @@ const AuthForm: React.FC = () => {
                     role: 'manager',
                 });
                 setErrors({});
-                setAuthMode('login');
             }
         } catch (error: any) {
             console.error('Signup error:', error);
@@ -160,8 +177,11 @@ const AuthForm: React.FC = () => {
             const response = await authAPI.login(loginData);
 
             if (response.data.success) {
-                alert('Login successful! Welcome back.');
-                console.log('User logged in:', response.data.user);
+                const user = response.data.user;
+                console.log(user)
+                if (onAuthSuccess) {
+                    onAuthSuccess(user);
+                }
 
                 setLoginData({
                     email: '',
@@ -309,21 +329,21 @@ const AuthForm: React.FC = () => {
                             >
                                 {isLoading
                                     ? (authMode === 'signup' ? 'Creating account...' : 'Signing in...')
-                                    : (authMode === 'signup' ? 'Create account' : 'Login')
+                                    : (authMode === 'signup' ? 'Create account' : 'Sign in')
                                 }
                             </Button>
                         </div>
 
                         <div className="text-center pt-2">
                             <span style={authStyles.smallText}>
-                                {authMode === 'signup' ? 'Already have an account?' : 'No account?'}{' '}
+                                {authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}{' '}
                                 <button
                                     type="button"
                                     onClick={toggleAuthMode}
                                     className="hover:underline font-medium"
                                     style={authStyles.link}
                                 >
-                                    {authMode === 'signup' ? 'Sign in' : 'Create one'}
+                                    {authMode === 'signup' ? 'Sign in' : 'Sign up'}
                                 </button>
                             </span>
                         </div>
