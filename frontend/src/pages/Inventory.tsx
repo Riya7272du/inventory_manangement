@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { inventoryAPI } from '../services/api';
+import type { InventoryItem } from '../types/auth';
+
+interface FormData {
+    name: string;
+    category: string;
+    quantity: string;
+    price: string;
+    supplier: string;
+    sku: string;
+    description: string;
+}
 
 const Inventory: React.FC = () => {
     const [showAddForm, setShowAddForm] = useState(false);
-    const [formData, setFormData] = useState({
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [formData, setFormData] = useState<FormData>({
         name: '',
         category: '',
-        quantity: 0,
-        price: 0,
+        quantity: '',
+        price: '',
         supplier: '',
         sku: '',
         description: ''
@@ -14,67 +30,98 @@ const Inventory: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === 'quantity' || name === 'price' ? Number(value) : value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
+        setErrorMessage('');
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Here you would make API call to save the item
-        console.log('Saving item:', formData);
-        setShowAddForm(false);
+    const resetForm = () => {
         setFormData({
             name: '',
             category: '',
-            quantity: 0,
-            price: 0,
+            quantity: '',
+            price: '',
             supplier: '',
             sku: '',
             description: ''
         });
+        setErrorMessage('');
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrorMessage('');
+        setIsSubmitting(true);
+
+        try {
+            const itemData: InventoryItem = {
+                sku: formData.sku,
+                item_name: formData.name,
+                quantity: Number(formData.quantity),
+                price: formData.price,
+                category: formData.category,
+                supplier: formData.supplier,
+                description: formData.description || undefined
+            };
+
+            const response = await inventoryAPI.addItem(itemData);
+
+            if (response.status === 201) {
+                toast.success('Item added successfully!');
+                resetForm();
+            }
+        } catch (error: any) {
+            console.error('Error adding item:', error);
+
+            if (error.response?.data?.message) {
+                setErrorMessage(error.response.data.message);
+            } else if (error.response?.status === 400) {
+                setErrorMessage('Please check your input and try again.');
+            } else {
+                setErrorMessage('Something went wrong. Please try again.');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleCancel = () => {
         setShowAddForm(false);
-        setFormData({
-            name: '',
-            category: '',
-            quantity: 0,
-            price: 0,
-            supplier: '',
-            sku: '',
-            description: ''
-        });
+        resetForm();
     };
 
     if (showAddForm) {
         return (
             <div className="h-full flex flex-col">
-
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h1 className="text-xl font-semibold text-slate-100 mb-1">
-                            Add / Edit Item
+                            Add New Item
                         </h1>
                         <p className="text-slate-400 text-sm">
-                            All fields except description are required; SKU must be unique
+                            Fill in the details below to add a new inventory item
                         </p>
                     </div>
                     <button
                         onClick={handleCancel}
-                        className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
                     >
                         Back
                     </button>
                 </div>
+
+                {errorMessage && (
+                    <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 rounded-lg">
+                        <p className="text-red-400 text-sm">{errorMessage}</p>
+                    </div>
+                )}
+
                 <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex-1">
                     <form onSubmit={handleSubmit} className="h-full flex flex-col">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Name
+                                    Item Name *
                                 </label>
                                 <input
                                     type="text"
@@ -82,22 +129,24 @@ const Inventory: React.FC = () => {
                                     value={formData.name}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Category
+                                    Category *
                                 </label>
                                 <select
                                     name="category"
                                     value={formData.category}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">Select Category</option>
                                     <option value="Electronics">Electronics</option>
                                     <option value="Apparel">Apparel</option>
                                     <option value="Stationery">Stationery</option>
@@ -106,47 +155,51 @@ const Inventory: React.FC = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Quantity
+                                    Quantity *
                                 </label>
                                 <input
                                     type="number"
                                     name="quantity"
                                     value={formData.quantity}
                                     onChange={handleInputChange}
-                                    min="0"
+                                    min="1"
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Price per Unit
+                                    Price *
                                 </label>
                                 <input
                                     type="number"
                                     name="price"
                                     value={formData.price}
                                     onChange={handleInputChange}
-                                    min="0"
+                                    min="0.01"
                                     step="0.01"
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Supplier
+                                    Supplier *
                                 </label>
                                 <select
                                     name="supplier"
                                     value={formData.supplier}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">Select Supplier</option>
+                                    <option value="Tech Corp">Tech Corp</option>
                                     <option value="Acme Co">Acme Co</option>
                                     <option value="Globex">Globex</option>
                                 </select>
@@ -154,7 +207,7 @@ const Inventory: React.FC = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    SKU
+                                    SKU *
                                 </label>
                                 <input
                                     type="text"
@@ -162,7 +215,8 @@ const Inventory: React.FC = () => {
                                     value={formData.sku}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                 />
                                 <p className="text-slate-400 text-xs mt-1">Must be unique</p>
                             </div>
@@ -175,49 +229,82 @@ const Inventory: React.FC = () => {
                                     name="description"
                                     value={formData.description}
                                     onChange={handleInputChange}
-                                    rows={2}
-                                    placeholder="Optional"
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 resize-none"
+                                    rows={3}
+                                    placeholder="Optional description"
+                                    disabled={isSubmitting}
+                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 resize-none disabled:opacity-50"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
-                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                <span className="px-2 py-1 bg-slate-700 rounded text-xs font-medium">Validation</span>
-                                <span>• required fields</span>
-                                <span>• unique SKU</span>
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={handleCancel}
-                                    className="px-6 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    Save
-                                </button>
-                            </div>
+                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                disabled={isSubmitting}
+                                className="px-6 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Item'
+                                )}
+                            </button>
                         </div>
                     </form>
                 </div>
+
+                <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    hideProgressBar={false}
+                    closeOnClick
+                    pauseOnHover
+                    draggable
+                    theme="dark"
+                />
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
-            <button
-                onClick={() => setShowAddForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-                Add Item
-            </button>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl font-semibold text-slate-100 mb-1">
+                        Inventory Management
+                    </h1>
+
+                </div>
+                <button
+                    onClick={() => setShowAddForm(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                    Add Item
+                </button>
+            </div>
+
+
+
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                closeOnClick
+                pauseOnHover
+                draggable
+                theme="dark"
+            />
         </div>
     );
 };

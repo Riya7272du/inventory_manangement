@@ -18,3 +18,13 @@ export interface FormErrors {
 }
 
 export type AuthMode = 'login' | 'signup';
+
+export interface InventoryItem {
+    sku: string;
+    item_name: string;
+    quantity: number;
+    price: string;
+    category: string;
+    supplier: string;
+    description?: string;
+}
