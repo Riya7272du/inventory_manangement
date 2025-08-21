@@ -1,269 +1,134 @@
 import React, { useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { inventoryAPI } from '../services/api';
-import type { InventoryItem } from '../types/auth';
+import InventoryTable from '../components/ui/InventoryTable';
+import InventoryFilters from '../components/ui/InventoryFilters';
+import AddItemForm from '../components/ui/AddItemForm';
+import DeleteModal from '../components/ui/DeleteModal';
+import ImportModal from '../components/ui/ImportModal';
 
-interface FormData {
+interface InventoryItem {
+    id: string;
     name: string;
     category: string;
-    quantity: string;
+    quantity: number;
     price: string;
     supplier: string;
     sku: string;
-    description: string;
+    status: 'Low' | 'OK';
+}
+
+interface Filters {
+    category: string;
+    stockLevel: string;
+    supplier: string;
+    search: string;
 }
 
 const Inventory: React.FC = () => {
     const [showAddForm, setShowAddForm] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
-    const [formData, setFormData] = useState<FormData>({
-        name: '',
+    const [filters, setFilters] = useState<Filters>({
         category: '',
-        quantity: '',
-        price: '',
+        stockLevel: '',
         supplier: '',
-        sku: '',
-        description: ''
+        search: ''
     });
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setErrorMessage('');
-    };
-
-    const resetForm = () => {
-        setFormData({
-            name: '',
-            category: '',
-            quantity: '',
-            price: '',
-            supplier: '',
-            sku: '',
-            description: ''
-        });
-        setErrorMessage('');
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setErrorMessage('');
-        setIsSubmitting(true);
-
-        try {
-            const itemData: InventoryItem = {
-                sku: formData.sku,
-                item_name: formData.name,
-                quantity: Number(formData.quantity),
-                price: formData.price,
-                category: formData.category,
-                supplier: formData.supplier,
-                description: formData.description || undefined
-            };
-
-            const response = await inventoryAPI.addItem(itemData);
-
-            if (response.status === 201) {
-                toast.success('Item added successfully!');
-                resetForm();
-            }
-        } catch (error: any) {
-            console.error('Error adding item:', error);
-
-            if (error.response?.data?.message) {
-                setErrorMessage(error.response.data.message);
-            } else if (error.response?.status === 400) {
-                setErrorMessage('Please check your input and try again.');
-            } else {
-                setErrorMessage('Something went wrong. Please try again.');
-            }
-        } finally {
-            setIsSubmitting(false);
+    const [items, setItems] = useState<InventoryItem[]>([
+        {
+            id: '1',
+            name: 'Laptop',
+            category: 'Electronics',
+            quantity: 4,
+            price: '$5.00',
+            supplier: 'Acme Co',
+            sku: 'SKU1',
+            status: 'Low'
+        },
+        {
+            id: '2',
+            name: 'Laptop',
+            category: 'Electronics',
+            quantity: 6,
+            price: '$2.80',
+            supplier: 'Globex',
+            sku: 'SKU2',
+            status: 'OK'
         }
+    ]);
+
+    const handleFilterChange = (filterName: string, value: string) => {
+        setFilters(prev => ({ ...prev, [filterName]: value }));
     };
 
-    const handleCancel = () => {
-        setShowAddForm(false);
-        resetForm();
+    const handleEdit = (item: InventoryItem) => {
+        console.log('Edit item:', item);
     };
+
+    const handleDelete = (id: string) => {
+        const item = items.find(item => item.id === id);
+        setSelectedItem(item || null);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = () => {
+        if (selectedItem) {
+            setItems(prev => prev.filter(item => item.id !== selectedItem.id));
+            toast.success('Item deleted successfully!');
+        }
+        setShowDeleteModal(false);
+        setSelectedItem(null);
+    };
+
+    const handleImport = (file: File) => {
+        console.log('Import file:', file);
+        toast.success('CSV import functionality to be implemented!');
+    };
+
+    const handleAddSuccess = () => {
+        setShowAddForm(false);
+        setErrorMessage('');
+
+    };
+
+    const handleAddError = (message: string) => {
+        setErrorMessage(message);
+    };
+
+    const handleAddCancel = () => {
+        setShowAddForm(false);
+        setErrorMessage('');
+    };
+
+    const filteredItems = items.filter(item => {
+        if (filters.category && item.category !== filters.category) return false;
+        if (filters.stockLevel && item.status !== filters.stockLevel) return false;
+        if (filters.supplier && item.supplier !== filters.supplier) return false;
+        if (filters.search) {
+            const searchLower = filters.search.toLowerCase();
+            return item.name.toLowerCase().includes(searchLower) ||
+                item.sku.toLowerCase().includes(searchLower);
+        }
+        return true;
+    });
 
     if (showAddForm) {
         return (
             <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 className="text-xl font-semibold text-slate-100 mb-1">
-                            Add New Item
-                        </h1>
-                        <p className="text-slate-400 text-sm">
-                            Fill in the details below to add a new inventory item
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleCancel}
-                        disabled={isSubmitting}
-                        className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-                    >
-                        Back
-                    </button>
-                </div>
-
                 {errorMessage && (
                     <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 rounded-lg">
                         <p className="text-red-400 text-sm">{errorMessage}</p>
                     </div>
                 )}
-
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex-1">
-                    <form onSubmit={handleSubmit} className="h-full flex flex-col">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Item Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleInputChange}
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Category *
-                                </label>
-                                <select
-                                    name="category"
-                                    value={formData.category}
-                                    onChange={handleInputChange}
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                >
-                                    <option value="">Select Category</option>
-                                    <option value="Electronics">Electronics</option>
-                                    <option value="Apparel">Apparel</option>
-                                    <option value="Stationery">Stationery</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Quantity *
-                                </label>
-                                <input
-                                    type="number"
-                                    name="quantity"
-                                    value={formData.quantity}
-                                    onChange={handleInputChange}
-                                    min="1"
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Price *
-                                </label>
-                                <input
-                                    type="number"
-                                    name="price"
-                                    value={formData.price}
-                                    onChange={handleInputChange}
-                                    min="0.01"
-                                    step="0.01"
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Supplier *
-                                </label>
-                                <select
-                                    name="supplier"
-                                    value={formData.supplier}
-                                    onChange={handleInputChange}
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                >
-                                    <option value="">Select Supplier</option>
-                                    <option value="Tech Corp">Tech Corp</option>
-                                    <option value="Acme Co">Acme Co</option>
-                                    <option value="Globex">Globex</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    SKU *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="sku"
-                                    value={formData.sku}
-                                    onChange={handleInputChange}
-                                    required
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                                />
-                                <p className="text-slate-400 text-xs mt-1">Must be unique</p>
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                    Description
-                                </label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleInputChange}
-                                    rows={3}
-                                    placeholder="Optional description"
-                                    disabled={isSubmitting}
-                                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 resize-none disabled:opacity-50"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                disabled={isSubmitting}
-                                className="px-6 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        Saving...
-                                    </>
-                                ) : (
-                                    'Save Item'
-                                )}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
+                <AddItemForm
+                    onCancel={handleAddCancel}
+                    onSuccess={handleAddSuccess}
+                    onError={handleAddError}
+                />
                 <ToastContainer
                     position="top-right"
                     autoClose={3000}
@@ -284,17 +149,47 @@ const Inventory: React.FC = () => {
                     <h1 className="text-xl font-semibold text-slate-100 mb-1">
                         Inventory Management
                     </h1>
-
+                    <p className="text-slate-400 text-sm">View, search, filter, and manage items</p>
                 </div>
-                <button
-                    onClick={() => setShowAddForm(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                    Add Item
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        Import CSV
+                    </button>
+                    <button
+                        onClick={() => setShowAddForm(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                        Add Item
+                    </button>
+                </div>
             </div>
 
+            <InventoryFilters
+                filters={filters}
+                onFilterChange={handleFilterChange}
+            />
 
+            <InventoryTable
+                items={filteredItems}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+            />
+
+            <DeleteModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                itemName={selectedItem?.name}
+            />
+
+            <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onImport={handleImport}
+            />
 
             <ToastContainer
                 position="top-right"
