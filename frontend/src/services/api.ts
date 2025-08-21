@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { SignupFormData, LoginFormData } from '../types/auth';
+import type { SignupFormData, LoginFormData, InventoryItem } from '../types/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const api = axios.create({
@@ -31,6 +31,17 @@ export const authAPI = {
     logout: async () => {
         try {
             const response = await api.post('/auth/logout/');
+            return response;
+        } catch (error: any) {
+            throw error;
+        }
+    },
+};
+
+export const inventoryAPI = {
+    addItem: async (itemData: InventoryItem) => {
+        try {
+            const response = await api.post('/inventory/add/', itemData);
             return response;
         } catch (error: any) {
             throw error;
