@@ -7,6 +7,7 @@ from .models import InventoryItem
 from .serializers import InventoryItemSerializer
 from .pagination import InventoryItemCursorPagination
 from rest_framework.generics import ListAPIView
+from django.db.models import Q
 
 def check_admin_permission(user):
     return user.is_superuser
@@ -33,11 +34,27 @@ def add_inventory_item(request):
     }, status=status.HTTP_400_BAD_REQUEST)
 
 class InventoryItemListView(ListAPIView):
-    queryset = InventoryItem.objects.all()
     serializer_class = InventoryItemSerializer
     pagination_class = InventoryItemCursorPagination
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = InventoryItem.objects.all()
+        category = self.request.query_params.get('category')
+        supplier = self.request.query_params.get('supplier')
+        search = self.request.query_params.get('search')
+       
+        if category:
+            queryset = queryset.filter(category__iexact=category)
 
+        if supplier:
+            queryset = queryset.filter(supplier__iexact=supplier)
+       
+        if search:
+            queryset = queryset.filter(
+                Q(item_name__icontains=search) | Q(sku__icontains=search)
+            )
+        return queryset
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
