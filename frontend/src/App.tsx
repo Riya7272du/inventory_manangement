@@ -7,12 +7,7 @@ import Inventory from './pages/Inventory';
 import Suppliers from './pages/Suppliers';
 import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
-
-interface User {
-  name: string;
-  email: string;
-  role: string;
-}
+import type { User } from './types/auth';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -75,7 +70,7 @@ const App: React.FC = () => {
         }>
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard user={user!} />} />
-          <Route path="inventory" element={<Inventory />} />
+          <Route path="inventory" element={<Inventory user={user!} />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="reports" element={<Reports />} />

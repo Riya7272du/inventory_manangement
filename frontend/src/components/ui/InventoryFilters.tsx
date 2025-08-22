@@ -1,24 +1,26 @@
 import React from 'react';
 
+interface Filters {
+    category: string;
+    stockLevel: string;
+    supplier: string;
+    search: string;
+}
+
 interface InventoryFiltersProps {
-    filters: {
-        category: string;
-        stockLevel: string;
-        supplier: string;
-        search: string;
-    };
+    filters: Filters;
     onFilterChange: (filterName: string, value: string) => void;
 }
 
 const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterChange }) => {
     return (
-        <section className="bg-gradient-to-b from-white/5 to-white/0 border border-slate-700 rounded-xl shadow-2xl p-3">
+        <section className="bg-white/5 border border-slate-700 rounded-xl p-3">
             <div className="grid grid-cols-12 gap-2.5">
                 <div className="col-span-3">
                     <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="filter-category">Category</label>
                     <select
                         id="filter-category"
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500"
                         value={filters.category}
                         onChange={(e) => onFilterChange('category', e.target.value)}
                     >
@@ -32,7 +34,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterCh
                     <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="filter-stock">Stock Level</label>
                     <select
                         id="filter-stock"
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500"
                         value={filters.stockLevel}
                         onChange={(e) => onFilterChange('stockLevel', e.target.value)}
                     >
@@ -45,7 +47,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterCh
                     <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="filter-supplier">Supplier</label>
                     <select
                         id="filter-supplier"
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500"
                         value={filters.supplier}
                         onChange={(e) => onFilterChange('supplier', e.target.value)}
                     >
@@ -59,7 +61,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterCh
                     <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="search">Search</label>
                     <input
                         id="search"
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         placeholder="Search by name or SKU"
                         value={filters.search}
                         onChange={(e) => onFilterChange('search', e.target.value)}
