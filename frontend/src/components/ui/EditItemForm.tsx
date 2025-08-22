@@ -1,38 +1,49 @@
-import React, { useState } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { inventoryAPI } from '../../services/api';
-import type { InventoryItem } from '../../types/auth';
+import type { InventoryItemResponse, InventoryItemUpdate } from '../../types/auth';
 
 interface FormData {
-    name: string;
+    item_name: string;
     category: string;
     quantity: string;
     price: string;
     supplier: string;
     sku: string;
-    description: string;
 }
 
-interface AddItemFormProps {
+interface EditItemFormProps {
+    item: InventoryItemResponse;
     onCancel: () => void;
     onSuccess: () => void;
     onError: (message: string) => void;
 }
 
-const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError }) => {
+const EditItemForm: React.FC<EditItemFormProps> = ({ item, onCancel, onSuccess, onError }) => {
     const [submitting, setSubmitting] = useState(false);
     const [form, setForm] = useState<FormData>({
-        name: '',
+        item_name: '',
         category: '',
         quantity: '',
         price: '',
         supplier: '',
-        sku: '',
-        description: ''
+        sku: ''
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    useEffect(() => {
+        if (item) {
+            setForm({
+                item_name: item.item_name,
+                category: item.category || '',
+                quantity: item.quantity.toString(),
+                price: item.price,
+                supplier: item.supplier || '',
+                sku: item.sku
+            });
+        }
+    }, [item]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
     };
@@ -42,27 +53,32 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
         setSubmitting(true);
 
         try {
-            const data: InventoryItem = {
+            const data: InventoryItemUpdate = {
                 sku: form.sku,
-                item_name: form.name,
+                item_name: form.item_name,
                 quantity: Number(form.quantity),
                 price: form.price,
-                category: form.category,
-                supplier: form.supplier,
-                description: form.description || undefined
+                category: form.category || null,
+                supplier: form.supplier || null
             };
 
-            const response = await inventoryAPI.addItem(data);
+            const response = await inventoryAPI.updateItem(item.id, data);
 
-            if (response.status === 201) {
-                toast.success('Item added!');
+            if (response.status === 200) {
+                toast.success('Item updated!');
                 setTimeout(onSuccess, 1000);
             }
         } catch (error: any) {
-            console.error('Add item error:', error);
+            console.error('Update error:', error);
 
-            if (error.response?.data?.message) {
-                onError(error.response.data.message);
+            if (error.response?.data?.details) {
+                const details = error.response.data.details;
+                if (typeof details === 'object') {
+                    const firstError = Object.values(details)[0] as string[];
+                    onError(firstError[0] || 'Please check your input');
+                } else {
+                    onError(details);
+                }
             } else if (error.response?.status === 400) {
                 onError('Please check your input');
             } else {
@@ -78,10 +94,10 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h1 className="text-xl font-semibold text-slate-100 mb-1">
-                        Add New Item
+                        Edit Item
                     </h1>
                     <p className="text-slate-400 text-sm">
-                        Fill in the details to add inventory
+                        Update "{item.item_name}"
                     </p>
                 </div>
                 <button
@@ -102,8 +118,8 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                             </label>
                             <input
                                 type="text"
-                                name="name"
-                                value={form.name}
+                                name="item_name"
+                                value={form.item_name}
                                 onChange={handleChange}
                                 required
                                 disabled={submitting}
@@ -113,13 +129,28 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
 
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                Category *
+                                SKU *
+                            </label>
+                            <input
+                                type="text"
+                                name="sku"
+                                value={form.sku}
+                                onChange={handleChange}
+                                required
+                                disabled={submitting}
+                                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                            />
+                            <p className="text-slate-400 text-xs mt-1">Must be unique</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                Category
                             </label>
                             <select
                                 name="category"
                                 value={form.category}
                                 onChange={handleChange}
-                                required
                                 disabled={submitting}
                                 className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                             >
@@ -132,6 +163,24 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
 
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                Supplier
+                            </label>
+                            <select
+                                name="supplier"
+                                value={form.supplier}
+                                onChange={handleChange}
+                                disabled={submitting}
+                                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                            >
+                                <option value="">Select Supplier</option>
+                                <option value="Tech Corp">Tech Corp</option>
+                                <option value="Acme Co">Acme Co</option>
+                                <option value="Globex">Globex</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
                                 Quantity *
                             </label>
                             <input
@@ -139,7 +188,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                                 name="quantity"
                                 value={form.quantity}
                                 onChange={handleChange}
-                                min="1"
+                                min="0"
                                 required
                                 disabled={submitting}
                                 className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
@@ -162,56 +211,6 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                                 className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                Supplier *
-                            </label>
-                            <select
-                                name="supplier"
-                                value={form.supplier}
-                                onChange={handleChange}
-                                required
-                                disabled={submitting}
-                                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                            >
-                                <option value="">Select Supplier</option>
-                                <option value="Tech Corp">Tech Corp</option>
-                                <option value="Acme Co">Acme Co</option>
-                                <option value="Globex">Globex</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                SKU *
-                            </label>
-                            <input
-                                type="text"
-                                name="sku"
-                                value={form.sku}
-                                onChange={handleChange}
-                                required
-                                disabled={submitting}
-                                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                            />
-                            <p className="text-slate-400 text-xs mt-1">Must be unique</p>
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                Description
-                            </label>
-                            <textarea
-                                name="description"
-                                value={form.description}
-                                onChange={handleChange}
-                                rows={3}
-                                placeholder="Optional description"
-                                disabled={submitting}
-                                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 resize-none disabled:opacity-50"
-                            />
-                        </div>
                     </div>
 
                     <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
@@ -231,19 +230,17 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                             {submitting ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Saving...
+                                    Updating...
                                 </>
                             ) : (
-                                'Save Item'
+                                'Update Item'
                             )}
                         </button>
                     </div>
                 </form>
             </div>
-
-            <ToastContainer position="top-right" autoClose={3000} theme="dark" />
         </div>
     );
 };
 
-export default AddItemForm;
+export default EditItemForm;

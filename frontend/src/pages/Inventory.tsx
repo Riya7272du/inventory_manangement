@@ -1,22 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import InventoryTable from '../components/ui/InventoryTable';
 import InventoryFilters from '../components/ui/InventoryFilters';
 import AddItemForm from '../components/ui/AddItemForm';
+import EditItemForm from '../components/ui/EditItemForm';
 import DeleteModal from '../components/ui/DeleteModal';
 import ImportModal from '../components/ui/ImportModal';
-
-interface InventoryItem {
-    id: string;
-    name: string;
-    category: string;
-    quantity: number;
-    price: string;
-    supplier: string;
-    sku: string;
-    status: 'Low' | 'OK';
-}
+import { inventoryAPI } from '../services/api';
+import type { InventoryItemResponse, PaginatedInventoryResponse, User } from '../types/auth';
 
 interface Filters {
     category: string;
@@ -25,12 +17,24 @@ interface Filters {
     search: string;
 }
 
-const Inventory: React.FC = () => {
+interface InventoryProps {
+    user: User;
+}
+
+const Inventory: React.FC<InventoryProps> = ({ user }) => {
     const [showAddForm, setShowAddForm] = useState(false);
+    const [showEditForm, setShowEditForm] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<InventoryItemResponse | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<InventoryItemResponse[]>([]);
+    const [pagination, setPagination] = useState({
+        next: null as string | null,
+        prev: null as string | null,
+        current: null as string | null
+    });
     const [filters, setFilters] = useState<Filters>({
         category: '',
         stockLevel: '',
@@ -38,83 +42,129 @@ const Inventory: React.FC = () => {
         search: ''
     });
 
-    const [items, setItems] = useState<InventoryItem[]>([
-        {
-            id: '1',
-            name: 'Laptop',
-            category: 'Electronics',
-            quantity: 4,
-            price: '$5.00',
-            supplier: 'Acme Co',
-            sku: 'SKU1',
-            status: 'Low'
-        },
-        {
-            id: '2',
-            name: 'Laptop',
-            category: 'Electronics',
-            quantity: 6,
-            price: '$2.80',
-            supplier: 'Globex',
-            sku: 'SKU2',
-            status: 'OK'
+    const loadItems = async (cursor?: string | null, newFilters?: Filters) => {
+        setLoading(true);
+        try {
+            const params: any = {};
+            if (cursor) params.cursor = cursor;
+
+            const activeFilters = newFilters || filters;
+            if (activeFilters.category) params.category = activeFilters.category;
+            if (activeFilters.supplier) params.supplier = activeFilters.supplier;
+            if (activeFilters.search) params.search = activeFilters.search;
+
+            const response = await inventoryAPI.getItems(params);
+            const data: PaginatedInventoryResponse = response.data;
+            let itemList = data.results;
+
+            if (activeFilters.stockLevel) {
+                itemList = itemList.filter(item => {
+                    const status = item.quantity <= 50 ? 'Low' : 'OK';
+                    return status === activeFilters.stockLevel;
+                });
+            }
+
+            setItems(itemList);
+
+            const extractCursor = (url: string | null) => {
+                if (!url) return null;
+                const match = url.match(/cursor=([^&]+)/);
+                return match ? match[1] : null;
+            };
+
+            setPagination({
+                next: extractCursor(data.next),
+                prev: extractCursor(data.previous),
+                current: cursor || null
+            });
+
+        } catch (error: any) {
+            console.error('Error loading items:', error);
+            toast.error('Failed to load items');
+        } finally {
+            setLoading(false);
         }
-    ]);
-
-    const handleFilterChange = (filterName: string, value: string) => {
-        setFilters(prev => ({ ...prev, [filterName]: value }));
     };
 
-    const handleEdit = (item: InventoryItem) => {
-        console.log('Edit item:', item);
+    useEffect(() => {
+        loadItems();
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadItems(null, filters);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [filters.search]);
+
+    useEffect(() => {
+        if (filters.category || filters.supplier || filters.stockLevel) {
+            loadItems(null, filters);
+        }
+    }, [filters.category, filters.supplier, filters.stockLevel]);
+
+    const handleFilterChange = (name: string, value: string) => {
+        setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleDelete = (id: string) => {
+    const handleEdit = (item: InventoryItemResponse) => {
+        setSelectedItem(item);
+        setShowEditForm(true);
+    };
+
+    const handleDelete = (id: number) => {
         const item = items.find(item => item.id === id);
         setSelectedItem(item || null);
         setShowDeleteModal(true);
     };
 
-    const confirmDelete = () => {
-        if (selectedItem) {
-            setItems(prev => prev.filter(item => item.id !== selectedItem.id));
-            toast.success('Item deleted successfully!');
+    const confirmDelete = async () => {
+        if (!selectedItem) return;
+
+        try {
+            await inventoryAPI.deleteItem(selectedItem.id);
+            toast.success('Item deleted!');
+            loadItems(pagination.current);
+        } catch (error: any) {
+            if (error.response?.status === 403) {
+                toast.error('Not allowed to delete items');
+            } else {
+                toast.error('Failed to delete item');
+            }
+        } finally {
+            setShowDeleteModal(false);
+            setSelectedItem(null);
         }
-        setShowDeleteModal(false);
-        setSelectedItem(null);
     };
 
     const handleImport = (file: File) => {
         console.log('Import file:', file);
-        toast.success('CSV import functionality to be implemented!');
+        toast.info('CSV import coming soon!');
     };
 
     const handleAddSuccess = () => {
         setShowAddForm(false);
         setErrorMessage('');
-
+        loadItems(pagination.current);
     };
 
-    const handleAddError = (message: string) => {
+    const handleEditSuccess = () => {
+        setShowEditForm(false);
+        setSelectedItem(null);
+        setErrorMessage('');
+        loadItems(pagination.current);
+    };
+
+    const handleError = (message: string) => {
         setErrorMessage(message);
     };
 
-    const handleAddCancel = () => {
+    const handleCancel = () => {
         setShowAddForm(false);
+        setShowEditForm(false);
+        setSelectedItem(null);
         setErrorMessage('');
     };
-
-    const filteredItems = items.filter(item => {
-        if (filters.category && item.category !== filters.category) return false;
-        if (filters.stockLevel && item.status !== filters.stockLevel) return false;
-        if (filters.supplier && item.supplier !== filters.supplier) return false;
-        if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
-            return item.name.toLowerCase().includes(searchLower) ||
-                item.sku.toLowerCase().includes(searchLower);
-        }
-        return true;
-    });
 
     if (showAddForm) {
         return (
@@ -125,19 +175,30 @@ const Inventory: React.FC = () => {
                     </div>
                 )}
                 <AddItemForm
-                    onCancel={handleAddCancel}
+                    onCancel={handleCancel}
                     onSuccess={handleAddSuccess}
-                    onError={handleAddError}
+                    onError={handleError}
                 />
-                <ToastContainer
-                    position="top-right"
-                    autoClose={3000}
-                    hideProgressBar={false}
-                    closeOnClick
-                    pauseOnHover
-                    draggable
-                    theme="dark"
+                <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+            </div>
+        );
+    }
+
+    if (showEditForm && selectedItem) {
+        return (
+            <div className="h-full flex flex-col">
+                {errorMessage && (
+                    <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 rounded-lg">
+                        <p className="text-red-400 text-sm">{errorMessage}</p>
+                    </div>
+                )}
+                <EditItemForm
+                    item={selectedItem}
+                    onCancel={handleCancel}
+                    onSuccess={handleEditSuccess}
+                    onError={handleError}
                 />
+                <ToastContainer position="top-right" autoClose={3000} theme="dark" />
             </div>
         );
     }
@@ -149,18 +210,18 @@ const Inventory: React.FC = () => {
                     <h1 className="text-xl font-semibold text-slate-100 mb-1">
                         Inventory Management
                     </h1>
-                    <p className="text-slate-400 text-sm">View, search, filter, and manage items</p>
+                    <p className="text-slate-400 text-sm">Manage your inventory items</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex gap-3">
                     <button
-                        className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium"
+                        className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
                         onClick={() => setShowImportModal(true)}
                     >
                         Import CSV
                     </button>
                     <button
                         onClick={() => setShowAddForm(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                         Add Item
                     </button>
@@ -173,16 +234,22 @@ const Inventory: React.FC = () => {
             />
 
             <InventoryTable
-                items={filteredItems}
+                items={items}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                user={user}
+                isLoading={loading}
+                onNextPage={() => pagination.next && loadItems(pagination.next)}
+                onPrevPage={() => pagination.prev && loadItems(pagination.prev)}
+                hasNext={!!pagination.next}
+                hasPrev={!!pagination.prev}
             />
 
             <DeleteModal
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={confirmDelete}
-                itemName={selectedItem?.name}
+                itemName={selectedItem?.item_name}
             />
 
             <ImportModal
@@ -191,15 +258,7 @@ const Inventory: React.FC = () => {
                 onImport={handleImport}
             />
 
-            <ToastContainer
-                position="top-right"
-                autoClose={3000}
-                hideProgressBar={false}
-                closeOnClick
-                pauseOnHover
-                draggable
-                theme="dark"
-            />
+            <ToastContainer position="top-right" autoClose={3000} theme="dark" />
         </div>
     );
 };
