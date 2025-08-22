@@ -7,4 +7,10 @@ urlpatterns = [
     path('<int:id>/', views.get_inventory_item, name='get_inventory_item'),
     path('<int:id>/update/', views.update_inventory_item, name='update_inventory_item'),
     path('<int:id>/delete/', views.delete_inventory_item, name='delete_inventory_item'),
+
+    path('suppliers/add/', views.add_supplier, name='add_supplier'),
+    path('suppliers/list/', views.SupplierListView.as_view(), name='list_suppliers'),
+    path('suppliers/<int:id>/', views.get_supplier, name='get_supplier'),
+    path('suppliers/<int:id>/update/', views.update_supplier, name='update_supplier'),
+    path('suppliers/<int:id>/delete/', views.delete_supplier, name='delete_supplier'),
 ]
