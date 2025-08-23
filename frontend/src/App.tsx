@@ -71,7 +71,7 @@ const App: React.FC = () => {
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard user={user!} />} />
           <Route path="inventory" element={<Inventory user={user!} />} />
-          <Route path="suppliers" element={<Suppliers />} />
+          <Route path="suppliers" element={<Suppliers user={user!} />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="reports" element={<Reports />} />
         </Route>

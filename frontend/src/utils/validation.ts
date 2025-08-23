@@ -47,3 +47,23 @@ export const validateRole = (role: string): string | null => {
     }
     return null;
 };
+
+export const validatePhone = (phone: string): string | null => {
+    if (!phone || phone.trim().length === 0) {
+        return 'Phone is required';
+    }
+
+    const Phone = phone.trim().replace(/[\s\-\(\)]/g, '');
+
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(Phone)) {
+        return 'Please enter a valid phone number';
+    }
+
+    if (Phone.length < 10) {
+        return 'Phone number must be at least 10 digits';
+    }
+
+    return null;
+};
+

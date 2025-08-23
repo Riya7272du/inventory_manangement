@@ -12,6 +12,21 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     def get_linked_items(self, obj):
         return obj.inventoryitem_set.count()
+    
+    def validate_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Name cannot be empty.")
+        return value.strip()
+    
+    def validate_email(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Email is required.")
+        return value.strip().lower()
+    
+    def validate_phone(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Phone is required.")
+        return value.strip()
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):
