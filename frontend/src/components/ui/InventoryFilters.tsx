@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supplierAPI } from '../../services/api';
+import type { Supplier } from '../../types/auth';
 
 interface Filters {
     category: string;
@@ -13,6 +15,24 @@ interface InventoryFiltersProps {
 }
 
 const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterChange }) => {
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [loadingSuppliers, setLoadingSuppliers] = useState(true);
+
+    useEffect(() => {
+        const loadSuppliers = async () => {
+            try {
+                const response = await supplierAPI.getSuppliers();
+                setSuppliers(response.data.results || []);
+            } catch (error) {
+                console.error('Failed to load suppliers:', error);
+            } finally {
+                setLoadingSuppliers(false);
+            }
+        };
+
+        loadSuppliers();
+    }, []);
+
     return (
         <section className="bg-white/5 border border-slate-700 rounded-xl p-3">
             <div className="grid grid-cols-12 gap-2.5">
@@ -47,14 +67,23 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterCh
                     <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="filter-supplier">Supplier</label>
                     <select
                         id="filter-supplier"
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                         value={filters.supplier}
                         onChange={(e) => onFilterChange('supplier', e.target.value)}
+                        disabled={loadingSuppliers}
                     >
                         <option value="">All</option>
-                        <option value="Acme Co">Acme Co</option>
-                        <option value="Globex">Globex</option>
-                        <option value="Tech Corp">Tech Corp</option>
+                        {loadingSuppliers ? (
+                            <option value="">Loading...</option>
+                        ) : suppliers.length === 0 ? (
+                            <option value="">No suppliers</option>
+                        ) : (
+                            suppliers.map((supplier) => (
+                                <option key={supplier.id} value={supplier.name}>
+                                    {supplier.name}
+                                </option>
+                            ))
+                        )}
                     </select>
                 </div>
                 <div className="col-span-3">
@@ -70,6 +99,6 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ filters, onFilterCh
             </div>
         </section>
     );
-};
+}
 
-export default InventoryFilters;
+export default InventoryFilters

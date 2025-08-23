@@ -48,7 +48,7 @@ class InventoryItemListView(ListAPIView):
             queryset = queryset.filter(category__iexact=category)
 
         if supplier:
-            queryset = queryset.filter(supplier__iexact=supplier)
+            queryset = queryset.filter(supplier__name__iexact=supplier)
        
         if search:
             queryset = queryset.filter(
