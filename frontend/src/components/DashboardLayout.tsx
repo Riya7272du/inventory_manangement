@@ -83,7 +83,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     to={item.path}
                                     className={`
                                         flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all
-                                        ${isActive
+                                    ${isActive
                                             ? 'text-blue-400 border'
                                             : 'text-slate-300 hover:bg-slate-700/30 border border-transparent'
                                         }
