@@ -22,8 +22,8 @@ export type AuthMode = 'login' | 'signup';
 export interface Supplier {
     id?: number;
     name: string;
-    email?: string;
-    phone?: string;
+    email: string;
+    phone: string;
     address?: string;
     linked_items?: number;
     created_at?: string;

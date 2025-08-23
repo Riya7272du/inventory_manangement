@@ -6,8 +6,8 @@ from decimal import Decimal
 
 class Supplier(models.Model):
     name = models.CharField(max_length=255, unique=True)  
-    email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=20, unique=True)  
     address = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -18,6 +18,7 @@ class Supplier(models.Model):
     @property
     def item_count(self):
         return self.inventoryitem_set.count()
+      
 
 
 class InventoryItem(models.Model):
