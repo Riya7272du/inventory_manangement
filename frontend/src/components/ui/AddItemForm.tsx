@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { inventoryAPI } from '../../services/api';
-import type { InventoryItem } from '../../types/auth';
+import { inventoryAPI, supplierAPI } from '../../services/api';
+import type { InventoryItem, Supplier } from '../../types/auth';
 
 interface FormData {
     name: string;
@@ -22,6 +22,8 @@ interface AddItemFormProps {
 
 const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError }) => {
     const [submitting, setSubmitting] = useState(false);
+    const [loadingSuppliers, setLoadingSuppliers] = useState(true);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [form, setForm] = useState<FormData>({
         name: '',
         category: '',
@@ -31,6 +33,22 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
         sku: '',
         description: ''
     });
+
+    useEffect(() => {
+        const loadSuppliers = async () => {
+            try {
+                const response = await supplierAPI.getSuppliers();
+                setSuppliers(response.data.results || []);
+            } catch (error) {
+                console.error('Failed to load suppliers:', error);
+                toast.error('Failed to load suppliers');
+            } finally {
+                setLoadingSuppliers(false);
+            }
+        };
+
+        loadSuppliers();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -48,7 +66,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                 quantity: Number(form.quantity),
                 price: form.price,
                 category: form.category,
-                supplier: form.supplier,
+                supplier: form.supplier ? Number(form.supplier) : undefined,
                 description: form.description || undefined
             };
 
@@ -165,21 +183,31 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
 
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                Supplier *
+                                Supplier
                             </label>
                             <select
                                 name="supplier"
                                 value={form.supplier}
                                 onChange={handleChange}
-                                required
-                                disabled={submitting}
+                                disabled={submitting || loadingSuppliers}
                                 className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                             >
                                 <option value="">Select Supplier</option>
-                                <option value="Tech Corp">Tech Corp</option>
-                                <option value="Acme Co">Acme Co</option>
-                                <option value="Globex">Globex</option>
+                                {loadingSuppliers ? (
+                                    <option value="">Loading suppliers...</option>
+                                ) : suppliers.length === 0 ? (
+                                    <option value="">No suppliers available</option>
+                                ) : (
+                                    suppliers.map((supplier) => (
+                                        <option key={supplier.id} value={supplier.id}>
+                                            {supplier.name}
+                                        </option>
+                                    ))
+                                )}
                             </select>
+                            {!loadingSuppliers && suppliers.length === 0 && (
+                                <p className="text-slate-400 text-xs mt-1">Add suppliers first to assign them to items</p>
+                            )}
                         </div>
 
                         <div>
@@ -225,7 +253,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onCancel, onSuccess, onError 
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting}
+                            disabled={submitting || loadingSuppliers}
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                         >
                             {submitting ? (

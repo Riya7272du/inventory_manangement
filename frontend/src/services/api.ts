@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { SignupFormData, LoginFormData, InventoryItem, InventoryItemUpdate } from '../types/auth';
+import type { SignupFormData, LoginFormData, InventoryItem, InventoryItemUpdate, Supplier } from '../types/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -32,6 +32,48 @@ export const authAPI = {
     logout: async () => {
         try {
             return await api.post('/auth/logout/');
+        } catch (error: any) {
+            throw error;
+        }
+    },
+};
+
+export const supplierAPI = {
+    getSuppliers: async (params?: { search?: string }) => {
+        try {
+            return await api.get('/inventory/suppliers/list/', { params });
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    addSupplier: async (supplierData: Supplier) => {
+        try {
+            return await api.post('/inventory/suppliers/add/', supplierData);
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    getSupplier: async (id: number) => {
+        try {
+            return await api.get(`/inventory/suppliers/${id}/`);
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    updateSupplier: async (id: number, supplierData: Partial<Supplier>) => {
+        try {
+            return await api.patch(`/inventory/suppliers/${id}/update/`, supplierData);
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    deleteSupplier: async (id: number) => {
+        try {
+            return await api.delete(`/inventory/suppliers/${id}/delete/`);
         } catch (error: any) {
             throw error;
         }

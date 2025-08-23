@@ -29,7 +29,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
     };
 
     const formatPrice = (price: string): string => {
-        return `$${parseFloat(price).toFixed(2)}`;
+        return `₹${parseFloat(price).toFixed(2)}`;
     };
 
     const canDelete = user.is_superuser || user.role === 'admin';

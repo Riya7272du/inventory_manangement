@@ -19,6 +19,17 @@ export interface FormErrors {
 
 export type AuthMode = 'login' | 'signup';
 
+export interface Supplier {
+    id?: number;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    linked_items?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface InventoryItem {
     id?: number;
     sku: string;
@@ -26,7 +37,7 @@ export interface InventoryItem {
     quantity: number;
     price: string;
     category?: string;
-    supplier?: string;
+    supplier?: number;
     created_at?: string;
     updated_at?: string;
     description?: string;
@@ -50,13 +61,19 @@ export interface InventoryItemUpdate {
     quantity?: number;
     price?: string;
     category?: string | null;
-    supplier?: string | null;
+    supplier?: number | null;
 }
 
 export interface PaginatedInventoryResponse {
     next: string | null;
     previous: string | null;
     results: InventoryItemResponse[];
+}
+
+export interface PaginatedSuppliersResponse {
+    next: string | null;
+    previous: string | null;
+    results: Supplier[];
 }
 
 export interface User {
