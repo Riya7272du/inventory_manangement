@@ -3,14 +3,23 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import InventoryItem,Supplier
-from .serializers import InventoryItemSerializer,SupplierSerializer
+from .models import InventoryItem,Supplier,Transaction
+from .serializers import InventoryItemSerializer,SupplierSerializer,TransactionSerializer
 from .pagination import InventoryItemCursorPagination
 from rest_framework.generics import ListAPIView
 from django.db.models import Q
 
 def check_admin_permission(user):
     return user.is_superuser
+
+def log_transaction(transaction_type, item_name, user, details=""):
+    user_name = user.first_name if user.first_name else user.username
+    Transaction.objects.create(
+        transaction_type=transaction_type,
+        item_name=item_name,
+        user_name=user_name,
+        details=details
+    )
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -19,8 +28,9 @@ def add_inventory_item(request):
     if serializer.is_valid():
         try:
             item = serializer.save()
-            result = InventoryItemSerializer(item)
-            return Response(result.data, status=status.HTTP_201_CREATED)
+            log_transaction('add', item.item_name, request.user, f"+{item.quantity} units")
+            # result = InventoryItemSerializer(item)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         except Exception as e:
             return Response({
@@ -84,6 +94,7 @@ def update_inventory_item(request, id):
         
         if serializer.is_valid():
             updated_item = serializer.save()
+            log_transaction('update', updated_item.item_name, request.user, "Updated")
             result = InventoryItemSerializer(updated_item)
             
             return Response({
@@ -115,6 +126,7 @@ def delete_inventory_item(request, id):
     
     try:
         item = get_object_or_404(InventoryItem, id=id)
+        log_transaction('delete', item.item_name, request.user, f"Removed SKU {item.sku}")
         item.delete()
         
         return Response({
@@ -238,3 +250,25 @@ def delete_supplier(request, id):
             'error': 'Failed to delete supplier',
             'details': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+class TransactionListView(ListAPIView):
+    serializer_class = TransactionSerializer
+    pagination_class = InventoryItemCursorPagination 
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Transaction.objects.all()
+        transaction_type = self.request.query_params.get('type')
+        search = self.request.query_params.get('search')
+       
+        if transaction_type:
+            queryset = queryset.filter(transaction_type=transaction_type)
+       
+        if search:
+            queryset = queryset.filter(
+                Q(item_name__icontains=search) | Q(details__icontains=search)
+            )
+            
+        return queryset
+    

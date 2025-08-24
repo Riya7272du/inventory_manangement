@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from .models import InventoryItem, Supplier
+from .models import InventoryItem, Supplier,Transaction
 from decimal import Decimal
-
+import pytz
 
 class SupplierSerializer(serializers.ModelSerializer):
     linked_items = serializers.SerializerMethodField()
@@ -68,4 +68,15 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Price must be greater than or equal to 0.")
         return value
 
+class TransactionSerializer(serializers.ModelSerializer):
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    formatted_date = serializers.SerializerMethodField()
     
+    class Meta:
+        model = Transaction
+        fields = "__all__"
+
+    def get_formatted_date(self, obj):
+        ist_timezone = pytz.timezone('Asia/Kolkata')
+        local_time = obj.created_at.astimezone(ist_timezone)
+        return local_time.strftime('%Y-%m-%d %H:%M')
