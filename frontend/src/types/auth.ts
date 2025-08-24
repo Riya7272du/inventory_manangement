@@ -83,3 +83,12 @@ export interface User {
     role: string;
     is_superuser?: boolean;
 }
+
+export interface Transaction {
+    id: number;
+    transaction_type_display: string;
+    item_name: string;
+    user_name: string;
+    details: string;
+    formatted_date: string;
+}
