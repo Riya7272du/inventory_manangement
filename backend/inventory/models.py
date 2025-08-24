@@ -47,3 +47,22 @@ class InventoryItem(models.Model):
 
     def __str__(self):
         return f"{self.sku} - {self.item_name}"
+    
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('add', 'Add'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+    ]
+    
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    item_name = models.CharField(max_length=255) 
+    user_name = models.CharField(max_length=255)  
+    details = models.CharField(max_length=500, blank=True) 
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.item_name} by {self.user_name}"    
