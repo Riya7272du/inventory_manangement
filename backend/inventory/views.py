@@ -239,62 +239,114 @@ def delete_supplier(request, id):
             'details': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-@api_view(['GET'])    
+
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
+# def get_reports_data(request):
+#     # Total stock value
+#     total_value = 0
+#     items = InventoryItem.objects.all()
+#     for item in items:
+#         total_value += float(item.price) * item.quantity
+    
+#     # Category values
+#     electronics_value = 0
+#     electronics_items = InventoryItem.objects.filter(category='Electronics')
+#     for item in electronics_items:
+#         electronics_value += float(item.price) * item.quantity
+    
+#     stationery_value = 0
+#     stationery_items = InventoryItem.objects.filter(category='Stationery')
+#     for item in stationery_items:
+#         stationery_value += float(item.price) * item.quantity
+    
+#     apparel_value = 0
+#     apparel_items = InventoryItem.objects.filter(category='Apparel')
+#     for item in apparel_items:
+#         apparel_value += float(item.price) * item.quantity
+    
+#     # Category breakdown for pie chart
+#     total_items = InventoryItem.objects.count()
+#     categories = []
+    
+#     electronics_count = electronics_items.count()
+#     stationery_count = stationery_items.count()
+#     apparel_count = apparel_items.count()
+    
+#     if total_items > 0:
+#         if electronics_count > 0:
+#             categories.append({
+#                 'name': 'Electronics',
+#                 'count': electronics_count,
+#                 'percentage': round((electronics_count / total_items) * 100)
+#             })
+#         if stationery_count > 0:
+#             categories.append({
+#                 'name': 'Stationery',
+#                 'count': stationery_count,
+#                 'percentage': round((stationery_count / total_items) * 100)
+#             })
+#         if apparel_count > 0:
+#             categories.append({
+#                 'name': 'Apparel',
+#                 'count': apparel_count,
+#                 'percentage': round((apparel_count / total_items) * 100)
+#             })
+    
+#     return Response({
+#         'total_value': round(total_value, 2),
+#         'category_values': {
+#             'electronics': round(electronics_value, 2),
+#             'stationery': round(stationery_value, 2),
+#             'apparel': round(apparel_value, 2)
+#         },
+#         'category_breakdown': categories
+#     })
+
+from django.db.models import Sum, F, Count
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_reports_data(request):
-    total_value=0
-    items=InventoryItem.objects.all()
-    for item in items:
-        total_value+=float(item.price)*item.quantity
+    # 1. Total stock value (all items)
+    total_value = InventoryItem.objects.aggregate(
+        total=Sum(F('price') * F('quantity'))
+    )['total'] or 0
 
-    electronics_value = 0
-    electronics_items = InventoryItem.objects.filter(category='Electronics')
-    for item in electronics_items:
-        electronics_value += float(item.price) * item.quantity
-    
-    stationery_value = 0
-    stationery_items = InventoryItem.objects.filter(category='Stationery')
-    for item in stationery_items:
-        stationery_value += float(item.price) * item.quantity
-    
-    apparel_value = 0
-    apparel_items = InventoryItem.objects.filter(category='Apparel')
-    for item in apparel_items:
-        apparel_value += float(item.price) * item.quantity
+    # 2. Category values + counts
+    category_data = (
+        InventoryItem.objects.values('category')
+        .annotate(
+            value=Sum(F('price') * F('quantity')),  # total value for this category
+            count=Count('id')                       # number of items in this category
+        )
+    )
 
+    # 3. Breakdown
     total_items = InventoryItem.objects.count()
-    categories = []
-    
-    electronics_count = electronics_items.count()
-    stationery_count = stationery_items.count()
-    apparel_count = apparel_items.count()
-    
-    if total_items > 0:
-        if electronics_count > 0:
-            categories.append({
-                'name': 'Electronics',
-                'count': electronics_count,
-                'percentage': round((electronics_count / total_items) * 100)
-            })
-        if stationery_count > 0:
-            categories.append({
-                'name': 'Stationery',
-                'count': stationery_count,
-                'percentage': round((stationery_count / total_items) * 100)
-            })
-        if apparel_count > 0:
-            categories.append({
-                'name': 'Apparel',
-                'count': apparel_count,
-                'percentage': round((apparel_count / total_items) * 100)
-            })
-    
+    breakdown = []
+    category_values = {}
+
+    for cat in category_data:
+        name = cat['category']
+        value = float(cat['value'] or 0)
+        count = cat['count']
+
+        # Save for values section
+        category_values[name.lower()] = round(value, 2)
+
+        # Save for breakdown section
+        breakdown.append({
+            'name': name,
+            'count': count,
+            'percentage': round((count / total_items) * 100) if total_items else 0
+        })
+
     return Response({
-        'total_value': round(total_value, 2),
-        'category_values': {
-            'electronics': round(electronics_value, 2),
-            'stationery': round(stationery_value, 2),
-            'apparel': round(apparel_value, 2)
-        },
-        'category_breakdown': categories
+        'total_value': round(float(total_value), 2),
+        'category_values': category_values,
+        'category_breakdown': breakdown
     })
