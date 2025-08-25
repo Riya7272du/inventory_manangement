@@ -7,7 +7,11 @@ from .models import InventoryItem,Supplier,Transaction
 from .serializers import InventoryItemSerializer,SupplierSerializer,TransactionSerializer
 from .pagination import InventoryItemCursorPagination
 from rest_framework.generics import ListAPIView
-from django.db.models import Q
+from django.db.models import Q,Sum, F, Count
+from django.http import HttpResponse
+import csv
+from xhtml2pdf import pisa
+import io
 
 def check_admin_permission(user):
     return user.is_superuser
@@ -272,3 +276,131 @@ class TransactionListView(ListAPIView):
             
         return queryset
     
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_reports_data(request):
+    total_value = InventoryItem.objects.aggregate(
+        total=Sum(F('price') * F('quantity'))
+    )['total'] or 0
+
+    category_data = (
+        InventoryItem.objects.values('category')
+        .annotate(
+            value=Sum(F('price') * F('quantity')),  
+            count=Count('id')                      
+        )
+    )
+    total_items = InventoryItem.objects.count()
+    breakdown = []
+    category_values = {}
+
+    for cat in category_data:
+        name = cat['category']
+        value = float(cat['value'] or 0)
+        count = cat['count']
+
+        category_values[name.lower()] = round(value, 2)
+
+        breakdown.append({
+            'name': name,
+            'count': count,
+            'percentage': round((count / total_items) * 100) if total_items else 0
+        })
+
+    return Response({
+        'total_value': round(float(total_value), 2),
+        'category_values': category_values,
+        'category_breakdown': breakdown
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_reports_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="inventory_report.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Report Type', 'Category', 'Items Count', 'Total Value'])
+    items = InventoryItem.objects.all()
+    totals = items.aggregate(
+        total_items=Count('id'),
+        total_value=Sum(F('price') * F('quantity'))
+    )
+    writer.writerow([
+        'Summary',
+        'All Items',
+        totals['total_items'] or 0,
+        f"${totals['total_value'] or 0:.2f}"
+    ])
+    writer.writerow([])
+    writer.writerow(['Individual Items', '', '', ''])
+    writer.writerow(['Item Name', 'SKU', 'Category', 'Quantity', 'Price', 'Total Value'])
+    
+    for item in items:
+        writer.writerow([
+            item.item_name,
+            item.sku,
+            item.category or 'Uncategorized',
+            item.quantity,
+            f"${item.price}",
+            f"${float(item.price) * item.quantity:.2f}"
+        ])
+    
+    return response
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_reports_pdf(request):
+    items = InventoryItem.objects.all()
+    total_items = items.count()
+    total_value = InventoryItem.objects.aggregate(
+        total=Sum(F('price') * F('quantity'))
+    )['total'] or 0
+
+    html = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            h1 {{ text-align: center; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ border: 1px solid #333; padding: 8px; text-align: left; }}
+        </style>
+    </head>
+    <body>
+        <h1>Inventory Report</h1>
+        <p><b>Total Items:</b> {total_items}</p>
+        <p><b>Total Value:</b> ${total_value:.2f}</p>
+        <br/>
+        <table>
+            <tr>
+                <th>Item Name</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total Value</th>
+            </tr>
+            {''.join([
+                f"<tr><td>{i.item_name}</td><td>{i.sku}</td><td>{i.category or 'Uncategorized'}</td><td>{i.quantity}</td><td>${i.price}</td><td>${float(i.price) * i.quantity:.2f}</td></tr>"
+                for i in items
+            ])}
+        </table>
+    </body>
+    </html>
+    """
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="inventory_report.pdf"'
+    
+    pisa_status = pisa.CreatePDF(io.StringIO(html), dest=response)
+
+    if pisa_status.err:
+        return HttpResponse("Error generating PDF", status=500)
+    
+    return response
+
