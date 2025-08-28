@@ -39,9 +39,17 @@ const Transactions: React.FC = () => {
 
             const extractCursor = (url: string | null) => {
                 if (!url) return null;
-                const match = url.match(/cursor=([^&]+)/);
-                return match ? match[1] : null;
+                try {
+                    const urlObj = new URL(url);
+                    const cursor = urlObj.searchParams.get('cursor');
+                    return cursor || null;
+                } catch (error) {
+                    console.error('Error extracting cursor:', error);
+                    const match = url.match(/cursor=([^&]+)/);
+                    return match ? decodeURIComponent(match[1]) : null;
+                }
             };
+
 
             setPagination({
                 next: extractCursor(data.next),
@@ -200,3 +208,6 @@ const Transactions: React.FC = () => {
 };
 
 export default Transactions;
+
+
+

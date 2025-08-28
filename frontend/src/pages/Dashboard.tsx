@@ -42,7 +42,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             const lowStockItems = inventoryData.filter((item: any) => item.quantity <= 50);
 
             setStats({
-                totalItems: inventoryData.length,
+                totalItems: reportsData.total_items,
                 stockValue: reportsData.total_value || 0,
                 lowStockCount: lowStockItems.length,
                 supplierCount: suppliersData.length,

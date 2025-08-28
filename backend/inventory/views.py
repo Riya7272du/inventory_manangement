@@ -313,7 +313,8 @@ def get_reports_data(request):
     return Response({
         'total_value': round(float(total_value), 2),
         'category_values': category_values,
-        'category_breakdown': breakdown
+        'category_breakdown': breakdown,
+        'total_items' : InventoryItem.objects.count()
     })
 
 

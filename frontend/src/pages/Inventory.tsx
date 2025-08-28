@@ -80,6 +80,13 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
 
         } catch (error: any) {
             console.error('Error loading items:', error);
+            if (error.response?.data?.detail === 'Invalid cursor') {
+                console.log('Invalid cursor detected, reloading without cursor');
+                if (cursor) {
+                    loadItems(null, newFilters);
+                    return;
+                }
+            }
             toast.error('Failed to load items');
         } finally {
             setLoading(false);
@@ -92,6 +99,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
+            setPagination({ next: null, prev: null, current: null });
             loadItems(null, filters);
         }, 300);
         return () => clearTimeout(timer);
@@ -99,6 +107,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
 
     useEffect(() => {
         if (filters.category || filters.supplier || filters.stockLevel) {
+            setPagination({ next: null, prev: null, current: null });
             loadItems(null, filters);
         }
     }, [filters.category, filters.supplier, filters.stockLevel]);

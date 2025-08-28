@@ -62,7 +62,8 @@ class Transaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        ordering = ['-created_at']
+        # ordering = ['-created_at']
+        pass
     
     def __str__(self):
         return f"{self.item_name} by {self.user_name}"    
