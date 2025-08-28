@@ -67,3 +67,90 @@ export const validatePhone = (phone: string): string | null => {
     return null;
 };
 
+interface ValidationResult {
+    isValid: boolean;
+    error?: string;
+}
+
+export const validateItemName = (value: string): ValidationResult => {
+    if (!value || value.trim().length === 0) {
+        return { isValid: false, error: 'Item name is required' };
+    }
+    if (value.trim().length < 2) {
+        return { isValid: false, error: 'Item name must be at least 2 characters' };
+    }
+    return { isValid: true };
+};
+
+export const validateCategory = (value: string): ValidationResult => {
+    if (value && typeof value !== 'string') {
+        return { isValid: false, error: 'Category must be a valid text' };
+    }
+    return { isValid: true };
+};
+
+export const validateQuantity = (value: string): ValidationResult => {
+    if (!value || value.trim().length === 0) {
+        return { isValid: false, error: 'Quantity is required' };
+    }
+
+    const numValue = parseInt(value, 10);
+
+    if (isNaN(numValue)) {
+        return { isValid: false, error: 'Quantity must be a valid number' };
+    }
+
+    if (numValue < 0) {
+        return { isValid: false, error: 'Quantity must be 0 or greater' };
+    }
+
+    if (!Number.isInteger(numValue)) {
+        return { isValid: false, error: 'Quantity must be a whole number' };
+    }
+
+    return { isValid: true };
+};
+
+export const validatePrice = (value: string): ValidationResult => {
+    if (!value || value.trim().length === 0) {
+        return { isValid: false, error: 'Price is required' };
+    }
+
+    const numValue = parseFloat(value);
+
+    if (isNaN(numValue)) {
+        return { isValid: false, error: 'Price must be a valid number' };
+    }
+
+    if (numValue < 0) {
+        return { isValid: false, error: 'Price must be 0 or greater' };
+    }
+
+    if (value.includes('.') && value.split('.')[1].length > 2) {
+        return { isValid: false, error: 'Price can have maximum 2 decimal places' };
+    }
+
+    return { isValid: true };
+};
+
+export const validateSupplier = (value: string): ValidationResult => {
+    if (value && typeof value !== 'string') {
+        return { isValid: false, error: 'Supplier must be a valid selection' };
+    }
+    return { isValid: true };
+};
+
+export const validateSKU = (value: string): ValidationResult => {
+    if (!value || value.trim().length === 0) {
+        return { isValid: false, error: 'SKU is required' };
+    }
+
+    if (value.trim().length < 2) {
+        return { isValid: false, error: 'SKU must be at least 2 characters' };
+    }
+    const skuPattern = /^[A-Za-z0-9_-]+$/;
+    if (!skuPattern.test(value.trim())) {
+        return { isValid: false, error: 'SKU can only contain letters, numbers, dashes, and underscores' };
+    }
+    return { isValid: true };
+};

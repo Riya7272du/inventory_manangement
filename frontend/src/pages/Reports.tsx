@@ -4,9 +4,10 @@ import api from '../services/api';
 interface ReportsData {
     total_value: number;
     category_values: {
-        electronics: number;
-        stationery: number;
-        apparel: number;
+        electronics?: number;
+        stationery?: number;
+        apparel?: number;
+        uncategorized?: number;
     };
     category_breakdown: Array<{
         name: string;
@@ -75,6 +76,35 @@ const Reports: React.FC = () => {
         }
     };
 
+    const generatePieChartGradient = () => {
+        if (!data?.category_breakdown || data.category_breakdown.length === 0) {
+            return 'conic-gradient(#6366f1 0% 100%)';
+        }
+
+        let gradient = 'conic-gradient(';
+        let currentPercentage = 0;
+
+        const colorMap: { [key: string]: string } = {
+            'Electronics': '#6366f1',
+            'Apparel': '#22c55e',
+            'Stationery': '#f59e0b',
+            'Uncategorized': '#8b5cf6'
+        };
+
+        data.category_breakdown.forEach((category, index) => {
+            const color = colorMap[category.name] || '#64748b';
+            const endPercentage = currentPercentage + category.percentage;
+
+            if (index > 0) gradient += ', ';
+            gradient += `${color} ${currentPercentage}% ${endPercentage}%`;
+
+            currentPercentage = endPercentage;
+        });
+
+        gradient += ')';
+        return gradient;
+    };
+
     if (loading) {
         return (
             <div className="space-y-6">
@@ -110,9 +140,7 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-
             <div className="grid grid-cols-12 gap-4">
-
                 <div className="col-span-6 p-4 border border-slate-600/50 rounded-xl" style={{ backgroundColor: '#161a2f' }}>
                     <h3 className="text-slate-400 text-sm font-medium mb-3">Current Stock Value</h3>
                     <div className="text-3xl font-bold text-slate-100 mb-4">
@@ -132,36 +160,43 @@ const Reports: React.FC = () => {
                             <span className="text-slate-300">Apparel</span>
                             <span className="text-slate-100">${data?.category_values?.apparel?.toLocaleString() || '0'}</span>
                         </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-300">Uncategorized</span>
+                            <span className="text-slate-100">${data?.category_values?.uncategorized?.toLocaleString() || '0'}</span>
+                        </div>
                     </div>
                 </div>
 
                 <div className="col-span-6 p-4 border border-slate-600/50 rounded-xl" style={{ backgroundColor: '#161a2f' }}>
                     <h3 className="text-slate-400 text-sm font-medium mb-4">Category Breakdown</h3>
                     <div className="flex items-center gap-6">
-                        <div className="w-32 h-32 rounded-full border-4 border-slate-700"
+                        <div
+                            className="w-32 h-32 rounded-full border-4 border-slate-700"
                             style={{
-                                background: data?.category_breakdown && data.category_breakdown.length > 0
-                                    ? `conic-gradient(
-                                        #6366f1 0% ${data.category_breakdown[0]?.percentage || 0}%, 
-                                        #22c55e ${data.category_breakdown[0]?.percentage || 0}% ${(data.category_breakdown[0]?.percentage || 0) + (data.category_breakdown[1]?.percentage || 0)}%, 
-                                        #f59e0b ${(data.category_breakdown[0]?.percentage || 0) + (data.category_breakdown[1]?.percentage || 0)}% 100%
-                                    )`
-                                    : `conic-gradient(#6366f1 0% 100%)`
-                            }}>
+                                background: generatePieChartGradient()
+                            }}
+                        >
                         </div>
                         <div className="space-y-2 text-sm">
                             {data?.category_breakdown && data.category_breakdown.length > 0 ? (
-                                data.category_breakdown.map((category, index) => (
-                                    <div key={category.name} className="flex items-center gap-3">
-                                        <div className={`w-4 h-4 rounded-full ${index === 0 ? 'bg-blue-500' :
-                                            index === 1 ? 'bg-green-500' : 'bg-yellow-500'
-                                            }`}></div>
-                                        <span className="px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-300">
-                                            {category.name}
-                                        </span>
-                                        <span className="text-slate-100">{category.percentage}%</span>
-                                    </div>
-                                ))
+                                data.category_breakdown.map((category, index) => {
+                                    const colorMap: { [key: string]: string } = {
+                                        'Electronics': 'bg-blue-500',
+                                        'Apparel': 'bg-green-500',
+                                        'Stationery': 'bg-yellow-500',
+                                        'Uncategorized': 'bg-purple-500'
+                                    };
+
+                                    return (
+                                        <div key={category.name} className="flex items-center gap-3">
+                                            <div className={`w-4 h-4 rounded-full ${colorMap[category.name] || 'bg-gray-500'}`}></div>
+                                            <span className="px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                                                {category.name}
+                                            </span>
+                                            <span className="text-slate-100">{category.percentage}%</span>
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <div className="text-slate-400 text-sm">
                                     <div>No categories found</div>

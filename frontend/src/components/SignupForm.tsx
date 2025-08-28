@@ -7,7 +7,7 @@ import { authAPI } from '../services/api';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Button } from './ui/Button';
-
+import { Link } from 'react-router-dom';
 const roleOptions = [
     { value: 'manager', label: 'Manager' },
     { value: 'admin', label: 'Admin' },
@@ -172,6 +172,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
         }
     };
 
+
     const handleLogin = async (): Promise<void> => {
         try {
             const response = await authAPI.login(loginData);
@@ -191,21 +192,35 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
             }
         } catch (error: any) {
             console.error('Login error:', error);
+            if (error.response?.data?.success === false) {
+                if (error.response.data.errors && Object.keys(error.response.data.errors).length > 0) {
+                    const backendErrors = error.response.data.errors;
+                    const formattedErrors: FormErrors = {};
+                    if (backendErrors.email) {
+                        formattedErrors.email = Array.isArray(backendErrors.email) ? backendErrors.email[0] : backendErrors.email;
+                    }
+                    if (backendErrors.password) {
+                        formattedErrors.password = Array.isArray(backendErrors.password) ? backendErrors.password[0] : backendErrors.password;
+                    }
+                    if (Object.keys(formattedErrors).length === 0) {
 
-            if (error.response?.data?.errors) {
-                const backendErrors = error.response.data.errors;
-                const formattedErrors: FormErrors = {};
+                        formattedErrors.password = 'Invalid email or password';
+                    }
 
-                if (backendErrors.email?.[0]) {
-                    formattedErrors.email = backendErrors.email[0];
+                    setErrors(formattedErrors);
                 }
-                if (backendErrors.password?.[0]) {
-                    formattedErrors.password = backendErrors.password[0];
+                else if (error.response.data.message) {
+                    setErrors({
+                        email: 'Invalid email or password',
+                        password: 'Invalid email or password'
+                    });
                 }
-
-                setErrors(formattedErrors);
-            } else {
-                alert('Login failed. Please check your credentials.');
+            }
+            else {
+                setErrors({
+                    email: 'Login failed. Please try again.',
+                    password: 'Login failed. Please try again.'
+                });
             }
         }
     };
@@ -230,11 +245,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleForgotPassword = (): void => {
-        console.log('Forgot password clicked');
-        alert('Forgot password functionality would go here');
     };
 
     const currentEmail = authMode === 'signup' ? signupData.email : loginData.email;
@@ -307,7 +317,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                             />
                         )}
 
-                        {authMode === 'login' && (
+                        {/* {authMode === 'login' && (
                             <div className="flex justify-end">
                                 <button
                                     type="button"
@@ -317,6 +327,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                                 >
                                     Forgot password?
                                 </button>
+                            </div>
+                        )} */}
+                        {authMode === 'login' && (
+                            <div className="flex justify-end">
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-sm hover:underline"
+                                    style={authStyles.link}
+                                >
+                                    Forgot password?
+                                </Link>
                             </div>
                         )}
 

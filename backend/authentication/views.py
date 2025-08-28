@@ -6,14 +6,16 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_decode
+from django.utils.http import urlsafe_base64_decode,urlsafe_base64_encode
 from django.utils.encoding import force_str
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from .serializers import (
     SignupSerializer, LoginSerializer, UserSerializer,
-    PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 )
+from django.core.mail import send_mail
+from django.utils.encoding import force_bytes
+import re
 
 def set_auth_cookie(response, token):
     cookie_settings = {
@@ -114,126 +116,114 @@ def logout(request):
     clear_auth_cookie(response)
     return response
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def password_reset_request(request):
-    serializer = PasswordResetRequestSerializer(data=request.data)
+def forgot_password(request):
+    email = request.data.get('email')
     
-    if serializer.is_valid():
-        try:
-            result = serializer.save()
-
-            if not result.get('user_exists', False):
-                return Response({
-                    'success': False,
-                    'message': 'No account exists with this email address.',
-                    'email': result.get('email')
-                }, status=status.HTTP_404_NOT_FOUND)
-            
-            response_data = {
-                'success': True,
-                'message': 'Reset details provided for existing account.',
-                'email': result.get('email')
-            }
-            
-            if 'uid' in result and 'token' in result:
-                response_data.update({
-                    'reset_details': {
-                        'uid': result.get('uid'),
-                        'token': result.get('token'),
-                        'user_id': result.get('user_id'),
-                        'username': result.get('username')
-                    },
-                    'instructions': 'Use the UID and token in the email with /api/auth/password-reset-confirm/ to reset password.'
-                })
-            
-            return Response(response_data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response({
-                'success': False,
-                'message': 'Error processing password reset request.',
-                'error': str(e) if settings.DEBUG else 'Server error'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    return Response({
-        'success': False,
-        'message': 'Please provide a valid email address.',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-
-@csrf_exempt
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def password_reset_confirm(request):
-    serializer = PasswordResetConfirmSerializer(data=request.data)
-    
-    if serializer.is_valid():
-        try:
-            user = serializer.save()
- 
-            Token.objects.filter(user=user).delete()
-            
-            return Response({
-                'success': True,
-                'message': 'Password has been reset successfully.',
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email
-                },
-                'note': 'Please login with your new password to get a new auth token.'
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response({
-                'success': False,
-                'message': 'Error resetting password.',
-                'error': str(e) if settings.DEBUG else 'Server error'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    return Response({
-        'success': False,
-        'message': 'Invalid reset data.',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-
-@csrf_exempt
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def validate_reset_token(request):
-    uid = request.data.get('uid')
-    token = request.data.get('token')
-    
-    if not uid or not token:
+    if not email:
         return Response({
-            'success': False,
-            'valid': False,
-            'message': 'Both UID and token are required.'
+            'error': 'Email is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+    if not re.match(email_regex, email):
+        return Response({
+            'error': 'Please enter a valid email address'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
+        user = User.objects.get(email=email)
         
-        user_id = force_str(urlsafe_base64_decode(uid))
-        user = User.objects.get(pk=user_id, is_active=True)
-    
-        valid = default_token_generator.check_token(user, token)
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+        
+        subject = "Reset Your Password - Inventory System"
+        message = f"""
+Hello {user.first_name },
+
+Click the link below to reset your password:
+{reset_link}
+
+This link will expire in 1 hour.
+
+If you didn't request this reset, please ignore this email.
+
+Thanks
+        """
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
         
         return Response({
             'success': True,
-            'valid': valid,
-            'message': 'Token is valid.' if valid else 'Token is invalid or expired.',
-            'user_info': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email
-            } if valid else None
+            'message': 'Password reset email sent successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response({
+            'success': True,
+            'message': 'If that email exists, a reset link has been sent'
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to send reset email. Please try again later.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request, uidb64, token):
+    new_password = request.data.get('password')
+    confirm_password = request.data.get('confirm_password')
+    
+    if not new_password or not confirm_password:
+        return Response({
+            'error': 'Both password fields are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if new_password != confirm_password:
+        return Response({
+            'error': 'Passwords do not match'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(new_password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+        
+        if not default_token_generator.check_token(user, token):
+            return Response({
+                'error': 'Invalid or expired reset link'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Password updated successfully'
         }, status=status.HTTP_200_OK)
         
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return Response({
-            'success': True,
-            'valid': False,
-            'message': 'Invalid UID or user not found.'
-        }, status=status.HTTP_200_OK)
+            'error': 'Invalid reset link'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to reset password. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    

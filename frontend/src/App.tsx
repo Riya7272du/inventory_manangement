@@ -8,6 +8,8 @@ import Suppliers from './pages/Suppliers';
 import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
 import type { User } from './types/auth';
+import ForgotPasswordForm from './pages/Forgot_password'
+import ResetPasswordForm from './pages/Reset_password';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -62,6 +64,13 @@ const App: React.FC = () => {
 
         <Route path="/signup" element={
           isAuthenticated ? <Navigate to="/dashboard" /> : <AuthForm onAuthSuccess={handleLogin} />
+        } />
+        <Route path="/forgot-password" element={
+          isAuthenticated ? <Navigate to="/dashboard" /> : <ForgotPasswordForm />
+        } />
+
+        <Route path="/reset-password/:uidb64/:token" element={
+          isAuthenticated ? <Navigate to="/dashboard" /> : <ResetPasswordForm />
         } />
         <Route path="/" element={
           isAuthenticated ?

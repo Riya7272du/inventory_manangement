@@ -297,10 +297,12 @@ def get_reports_data(request):
 
     for cat in category_data:
         name = cat['category']
+        if name is None:
+            name = 'Uncategorized'
         value = float(cat['value'] or 0)
         count = cat['count']
-
-        category_values[name.lower()] = round(value, 2)
+        category_key = name.lower() if name != 'Uncategorized' else 'uncategorized'
+        category_values[category_key] = round(value, 2)
 
         breakdown.append({
             'name': name,

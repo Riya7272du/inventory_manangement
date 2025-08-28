@@ -36,6 +36,25 @@ export const authAPI = {
             throw error;
         }
     },
+
+    forgotPassword: async (email: string) => {
+        try {
+            return await api.post('/auth/forgot-password/', { email });
+        } catch (error: any) {
+            throw error;
+        }
+    },
+
+    resetPassword: async (uidb64: string, token: string, password: string, confirmPassword: string) => {
+        try {
+            return await api.post(`/auth/reset-password/${uidb64}/${token}/`, {
+                password,
+                confirm_password: confirmPassword
+            });
+        } catch (error: any) {
+            throw error;
+        }
+    },
 };
 
 export const supplierAPI = {

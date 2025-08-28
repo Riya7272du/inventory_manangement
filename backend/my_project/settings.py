@@ -127,6 +127,7 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  
 CSRF_COOKIE_SECURE = False  
 
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)

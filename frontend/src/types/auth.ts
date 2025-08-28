@@ -92,3 +92,24 @@ export interface Transaction {
     details: string;
     formatted_date: string;
 }
+
+export interface FormData {
+    name: string;
+    category: string;
+    quantity: string;
+    price: string;
+    supplier: string;
+    sku: string;
+    description: string;
+}
+
+export interface FormErrors {
+    name?: string;
+    category?: string;
+    quantity?: string;
+    price?: string;
+    supplier?: string;
+    sku?: string;
+    description?: string;
+    general?: string;
+}

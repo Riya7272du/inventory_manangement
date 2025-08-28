@@ -205,7 +205,7 @@ const EditSupplierForm: React.FC<EditSupplierFormProps> = ({ supplier, onCancel,
                                     ? 'border border-red-500 focus:border-red-500 bg-red-900/20'
                                     : 'border border-slate-600/50 focus:border-blue-500 bg-slate-900/60'
                                     }`}
-                                placeholder="+1 (555) 123-4567"
+                                placeholder=""
                             />
                             {errors.phone && (
                                 <p className="text-red-400 text-sm mt-1">{errors.phone}</p>
