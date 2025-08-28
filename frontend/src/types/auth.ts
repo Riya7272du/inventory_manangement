@@ -93,6 +93,7 @@ export interface Transaction {
     formatted_date: string;
 }
 
+
 export interface FormData {
     name: string;
     category: string;
@@ -112,4 +113,25 @@ export interface FormErrors {
     sku?: string;
     description?: string;
     general?: string;
+}
+
+export interface DashboardStats {
+    totalItems: number;
+    stockValue: number;
+    lowStockCount: number;
+    supplierCount: number;
+    categoryBreakdown: Array<{
+        name: string;
+        percentage: number;
+    }>;
+    recentTransactions: Array<{
+        id: number;
+        formatted_date: string;
+        user_name: string;
+        transaction_type_display: string;
+        item_name: string;
+        details: string;
+    }>;
+    monthlyData: number[];
+
 }
