@@ -317,18 +317,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                             />
                         )}
 
-                        {/* {authMode === 'login' && (
-                            <div className="flex justify-end">
-                                <button
-                                    type="button"
-                                    onClick={handleForgotPassword}
-                                    className="text-sm hover:underline"
-                                    style={authStyles.link}
-                                >
-                                    Forgot password?
-                                </button>
-                            </div>
-                        )} */}
                         {authMode === 'login' && (
                             <div className="flex justify-end">
                                 <Link

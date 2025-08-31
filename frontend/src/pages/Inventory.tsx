@@ -106,10 +106,9 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
     }, [filters.search]);
 
     useEffect(() => {
-        if (filters.category || filters.supplier || filters.stockLevel) {
-            setPagination({ next: null, prev: null, current: null });
-            loadItems(null, filters);
-        }
+        // Always reload when non-search filters change, including when they're cleared
+        setPagination({ next: null, prev: null, current: null });
+        loadItems(null, filters);
     }, [filters.category, filters.supplier, filters.stockLevel]);
 
     const handleFilterChange = (name: string, value: string) => {
@@ -213,35 +212,38 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
+            {/* Header - Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-100 mb-1">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-slate-100 mb-1">
                         Inventory Management
                     </h1>
                     <p className="text-slate-400 text-sm">Manage your inventory items</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button
-                        className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
+                        className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm sm:text-base"
                         onClick={() => setShowImportModal(true)}
                     >
                         Import CSV
                     </button>
                     <button
                         onClick={() => setShowAddForm(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                     >
                         Add Item
                     </button>
                 </div>
             </div>
 
+            {/* Filters */}
             <InventoryFilters
                 filters={filters}
                 onFilterChange={handleFilterChange}
             />
 
+            {/* Table */}
             <InventoryTable
                 items={items}
                 onEdit={handleEdit}
@@ -254,6 +256,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                 hasPrev={!!pagination.prev}
             />
 
+            {/* Modals */}
             <DeleteModal
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
